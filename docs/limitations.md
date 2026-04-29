@@ -118,6 +118,28 @@ The implication for users: phenotype-conditional predictions from `genoadme.pred
 
 -----
 
+## 10. v0.1.0 Tier 1 result is PARTIAL — Sisyphus systematically underpredicts pravastatin exposure
+
+**Discovered:** 2026-04-29 (commit `133ab1f`).
+
+The first Tier 1 validation run (`reports/validation-tier1-20260429.md`) produced these per-criterion results:
+
+|Criterion                                  |Threshold |Observed |Result|
+|-------------------------------------------|----------|---------|------|
+|Population AAFE (AUC)                      |≤ 2.0     |2.204    |FAIL  |
+|PM/EM AUC ratio                            |[1.4, 2.5]|2.341    |PASS  |
+|PM/EM Cmax ratio                           |≥ 1.3     |2.014    |PASS  |
+
+The direction gate (PM/EM PK ratios) passes — Sisyphus's OATP1B1 ECM correctly captures the SLCO1B1 phenotype effect on pravastatin disposition. The magnitude gate fails because Sisyphus's predicted EM AUC (0.106 mg·h/L) is ~42% of the published Niemi 2006 reference (0.250 mg·h/L). The same direction holds for Cmax (0.030 mg/L predicted vs 0.075 mg/L observed).
+
+The systematic underprediction is upstream of GenoADME — it lives in Sisyphus's pravastatin pipeline (chemistry profile → ADME prediction → OATP1B1 ECM kinetic constants). GenoADME conditions correctly on top of whatever absolute level Sisyphus produces; the per-genotype ratios depend only on the OATP1B1 abundance scaling and pass the pre-spec criteria comfortably.
+
+**Implication:** The v0.1.0 preprint reports this as a Tier 1 **PARTIAL** result. The framework demonstrates that genotype-conditional PK distributions can be produced from PBPK + variant calls + tissue eQTL effects, with the per-genotype ordering matching clinical expectation. The absolute-magnitude validation against published clinical means is bottlenecked on Sisyphus's substrate-specific calibration, which is a v0.2 dependency, not a v0.1.0 deliverable.
+
+The PM cohort size (n=3) further widens the implicit CI on the PM/EM ratios — the result is directionally consistent but underpowered for tight magnitude inference. Rotating the holdout to enrich for EUR ancestry would inflate PM count but contaminate the holdout for any future ancestry-stratified analysis (so the rotation is not done; the n=3 limitation is reported as-is).
+
+-----
+
 ## Adding to this document
 
 New limitations are added with the format:

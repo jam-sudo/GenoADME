@@ -2,7 +2,7 @@
 
 **Genotype-conditional ADME prediction for PBPK simulation.**
 
-Status: pre-release (v0.1.0). The first preprint deposit is targeted; this README will be updated with results when validation completes against the pre-specified tiers documented in [`docs/validation-tiers.md`](docs/validation-tiers.md).
+Status: pre-release (v0.1.0). First Tier 1 validation run executed 2026-04-29 — **result: PARTIAL**. Direction gates (PM/EM PK ratios) pass; population-level magnitude (AAFE) fails due to a systematic Sisyphus underprediction of pravastatin exposure (~42% of the Niemi 2006 reference). The full report and headline numbers live at [`reports/validation-tier1-20260429.md`](reports/validation-tier1-20260429.md) / [`reports/headline-metrics-20260429.json`](reports/headline-metrics-20260429.json). Per the pre-spec, this is reported as a PARTIAL result, not silently demoted (see [`docs/validation-tiers.md`](docs/validation-tiers.md) "Pass criterion rationale" + [`docs/limitations.md`](docs/limitations.md) §10).
 
 -----
 
