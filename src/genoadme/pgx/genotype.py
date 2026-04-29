@@ -233,6 +233,82 @@ def load_holdout(holdout_id_path: str | Path) -> list[str]:
     return [line.strip() for line in path.read_text().splitlines() if line.strip()]
 
 
+def load_slco1b1_calls(
+    tsv_path: str | Path,
+    holdout_id_path: str | Path | None = None,
+) -> list[Genotype]:
+    """Load rs4149056 (SLCO1B1 521T>C) calls from a 3-column TSV.
+
+    The TSV must have a header line with columns
+    ``sample_id``, ``rs4149056_a``, ``rs4149056_b``. Phasing is
+    preserved as the source order (the upstream Ensembl REST response
+    returns phased calls in the order ``allele|allele``).
+
+    Args:
+        tsv_path: Path to the calls TSV. v0.1.0 ships
+            ``data/genotype/slco1b1_rs4149056_holdout.tsv``.
+        holdout_id_path: Optional. If provided, the result is
+            restricted to sample IDs in this holdout file. Use this to
+            guarantee the returned list has exactly ``n`` elements per
+            the holdout protocol.
+
+    Returns:
+        List of ``Genotype`` records, lex-sorted by ``sample_id``,
+        each with ``calls = {"rs4149056": (allele_a, allele_b)}``.
+        ``super_population`` is resolved from the bundled 1000G panel
+        snapshot or ``None`` if the sample is not in the panel.
+
+    Raises:
+        ValueError: If the TSV is malformed.
+        KeyError: If ``holdout_id_path`` references samples missing
+            from the TSV.
+    """
+    tsv_path = Path(tsv_path)
+    by_id: dict[str, tuple[str, str]] = {}
+    with tsv_path.open("r", encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+        cols = [h.strip() for h in header]
+        required = ("sample_id", "rs4149056_a", "rs4149056_b")
+        for r in required:
+            if r not in cols:
+                raise ValueError(
+                    f"TSV {tsv_path} missing required column {r!r}; got {cols}"
+                )
+        i_id = cols.index("sample_id")
+        i_a = cols.index("rs4149056_a")
+        i_b = cols.index("rs4149056_b")
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) <= max(i_id, i_a, i_b):
+                continue
+            sid = parts[i_id].strip()
+            if not sid:
+                continue
+            by_id[sid] = (parts[i_a].strip(), parts[i_b].strip())
+
+    if holdout_id_path is not None:
+        wanted = load_holdout(holdout_id_path)
+        missing = [s for s in wanted if s not in by_id]
+        if missing:
+            raise KeyError(
+                f"{len(missing)} holdout sample(s) missing from {tsv_path}; "
+                f"first few: {missing[:5]}"
+            )
+        ids = sorted(wanted)
+    else:
+        ids = sorted(by_id.keys())
+
+    panel_lookup = _build_super_pop_lookup()
+    return [
+        Genotype(
+            sample_id=sid,
+            super_population=panel_lookup.get(sid),
+            calls={"rs4149056": by_id[sid]},
+        )
+        for sid in ids
+    ]
+
+
 def load_thousand_genomes_holdout(holdout_id_path: str | Path) -> list[Genotype]:
     """Load the 500-individual holdout subset as ``Genotype`` records.
 
