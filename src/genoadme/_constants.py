@@ -14,19 +14,18 @@ the spec; the code follows the spec, never the other way around.
 from __future__ import annotations
 
 # Tier 1 — strong eQTL signal + CPIC Level A. Hybrid mapping
-# (categorical phenotype × continuous eQTL refinement).
+# (categorical phenotype × continuous eQTL refinement). v0.1.0 has a
+# single pair: see docs/validation-tiers.md "Scope of v0.1.0" for why
+# the original three were reduced. Five additional pairs are tracked
+# in docs/validation-tiers.md "Deferred" pending Sisyphus extensions.
 TIER_1_PAIRS: tuple[tuple[str, str], ...] = (
-    ("SLCO1B1", "simvastatin"),
-    ("NAT2", "isoniazid"),
-    ("UGT1A1", "irinotecan"),
+    ("SLCO1B1", "pravastatin"),
 )
 
-# Tier 2 — CPIC Level A but eQTL noisy. Categorical phenotype only;
-# the continuous mapping is bypassed for these genes.
-TIER_2_PAIRS: tuple[tuple[str, str], ...] = (
-    ("CYP2C19", "clopidogrel"),
-    ("CYP2C9", "warfarin"),
-)
+# Tier 2 — CPIC Level A but eQTL noisy. Categorical phenotype only.
+# Empty in v0.1.0; both originally-scoped pairs (CYP2C19/clopidogrel,
+# CYP2C9/warfarin) are deferred — see docs/validation-tiers.md.
+TIER_2_PAIRS: tuple[tuple[str, str], ...] = ()
 
 # Tier 3 — acknowledged gap. Requesting these genes raises
 # ``UnsupportedGeneError`` (see ``genoadme.errors``).

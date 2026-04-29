@@ -62,13 +62,14 @@ Each arrow has known noise. The cumulative R² across the full chain is approxim
 
 ## Validation strategy (pre-specified)
 
-The full tier specification lives in [`docs/validation-tiers.md`](docs/validation-tiers.md), committed before any validation run. Summary:
+The full tier specification lives in [`docs/validation-tiers.md`](docs/validation-tiers.md), committed before any validation run. v0.1.0 commits to validating exactly **one drug-gene pair end-to-end**, with five additional pairs deferred to v0.2+ pending specific Sisyphus capability extensions:
 
-- **Tier 1** — strong eQTL signal + CPIC Level A. Hybrid mapping (categorical phenotype × continuous eQTL refinement). Pre-specified pairs: SLCO1B1/simvastatin, NAT2/isoniazid, UGT1A1/irinotecan.
-- **Tier 2** — CPIC Level A but eQTL noisy. Categorical-only mapping. Pre-specified pairs: CYP2C19/clopidogrel, CYP2C9/warfarin.
+- **Tier 1** — strong eQTL signal + CPIC Level A. Hybrid mapping (categorical phenotype × continuous eQTL refinement). v0.1.0 pair: **SLCO1B1 / pravastatin** (OATP1B1-mediated, validated against Niemi 2006 / Pasanen 2007 clinical data).
+- **Tier 2** — CPIC Level A but eQTL noisy. Categorical-only mapping. **Empty in v0.1.0** — pre-specified pairs (CYP2C19/clopidogrel, CYP2C9/warfarin) are deferred because Sisyphus's pipeline does not propagate phenotype scaling to PK for prodrugs not in the activation registry or for non-ECM CYP-cleared drugs whose CLint is ML-predicted.
 - **Tier 3** — acknowledged gap (paralog-confounded or expression-activity discordance). Reported as expected failure, not modeled. Pre-specified: CYP2D6, CYP3A4, ABCB1.
+- **Deferred** — see [`docs/validation-tiers.md`](docs/validation-tiers.md) §Deferred for the five originally-scoped pairs (SLCO1B1/simvastatin, NAT2/isoniazid, UGT1A1/irinotecan, CYP2C19/clopidogrel, CYP2C9/warfarin) and the specific Sisyphus blocker for each.
 
-Tier changes after validation has run require an audit log entry and a Limitations disclosure. There is no quiet re-tiering. The full discipline is in [`docs/scientific-integrity.md`](docs/scientific-integrity.md).
+The reduction from six pairs to one was a pre-validation spec correction logged in [`docs/tier-changes.md`](docs/tier-changes.md) — driven by empirical findings during v0.1.0 skeleton work, not by validation results. Tier changes after validation has run require an audit log entry and a Limitations disclosure. There is no quiet re-tiering. The full discipline is in [`docs/scientific-integrity.md`](docs/scientific-integrity.md).
 
 -----
 

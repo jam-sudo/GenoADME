@@ -102,6 +102,22 @@ To make the scope unambiguous:
 
 -----
 
+## 9. v0.1.0 PK propagation is limited to OATP1B1-mediated substrates
+
+**Discovered:** 2026-04-29 (commit *to be filled at commit time*).
+
+The body-graph enzyme-and-transporter abundance scaling that GenoADME drives via Sisyphus's `apply_phenotype_to_graph` propagates to predicted PK only along Sisyphus's Extended Clearance Model (ECM) pathway, which in v0.1.0 covers OATP1B1-mediated hepatic uptake. Specifically:
+
+- **Generic CYP-cleared drugs**: Sisyphus's CLint comes from an XGBoost predictor on molecular descriptors. Scaling liver enzyme abundance does not change the predicted CLint and therefore does not change the predicted PK. Empirical: caffeine + CYP1A2 PM moved AUC by 8.5×10⁻¹⁰ (floating-point noise).
+- **Prodrugs not in Sisyphus's activation registry**: Without a registry entry, the active species is not produced in simulation. Genotype-driven scaling on the activating enzyme therefore has no path to influence active-species PK. The current registry covers BH4, GS-441524, tebipenem, R406 — none of GenoADME's originally-scoped prodrug pairs (clopidogrel, simvastatin, irinotecan→SN-38).
+- **Genes absent from `PHENOTYPE_SCALES` or from `reference_man.yaml`**: NAT2 and UGT1A1, both of which appear in the GenoADME deferred-pairs list, are not represented in Sisyphus's current physiology graph or activity-multiplier table.
+
+This is why v0.1.0 reduces the validation scope to a single pair (SLCO1B1/pravastatin) — the only pair for which the full eQTL-→categorical-→graph-scaling-→PK chain can be exercised against the holdout under the pinned Sisyphus build. The original five-pair scope is preserved as a Deferred roadmap in [`docs/validation-tiers.md`](validation-tiers.md), each pair annotated with the specific Sisyphus blocker.
+
+The implication for users: phenotype-conditional predictions from `genoadme.predict_pk(genotype=...)` are reliable only where the underlying Sisyphus pipeline has a propagation path. For drugs outside the supported set, the prediction reduces silently to the average-patient case. This is a real foot-gun and is the reason the v0.1.0 wrapper is intentionally narrow.
+
+-----
+
 ## Adding to this document
 
 New limitations are added with the format:

@@ -6,24 +6,29 @@ These are scope decisions, not preferences. Violating them turns GenoADME from a
 
 -----
 
-## 1. GenoADME wraps Sisyphus
+## 1. GenoADME wraps Sisyphus — wiring strategy
 
-All ODE solving, ADME prediction, Bayesian refinement, and uncertainty propagation routines are imported from `sisyphus.*`. GenoADME adds a single new layer — the PGx layer — that conditions Sisyphus’s existing ADME parameter distributions on genotype.
+All ODE solving, ADME prediction, Bayesian refinement, and uncertainty propagation routines are imported from `sisyphus.*`. GenoADME adds a single new layer — the PGx layer — that conditions Sisyphus's existing ADME parameter distributions on genotype.
 
-If a needed Sisyphus API does not exist, the response is to **open an issue against Sisyphus** (the user will decide whether to upstream a change). The response is not to reimplement the missing API inside GenoADME.
+GenoADME is allowed to call Sisyphus's **public lower-level building blocks** (`sisyphus.graph.builder.build_from_yaml`, `sisyphus.predict.phenotype.apply_phenotype_to_graph`, `sisyphus.predict.ivive.build_drug_on_graph`, `sisyphus.engine.compiler.ODECompiler` / `ResolvedParams`, `sisyphus.engine.solver.solve`, `sisyphus.pk.endpoints.compute_endpoints`, `sisyphus.predict.transporter_db.load_oatp1b1_kinetics` / `load_hepatic_ecm_params`). The genotype-conditional pipeline in `genoadme.predict.predict_pk` (with-genotype path) and `genoadme.validate.run_tier1` orchestrates these in the same order Sisyphus's own `tests/integration/test_slco1b1_phenotype.py` does — that integration test is the reference pattern. This is route (b) in the v0.1.0 implementation decision recorded in [`docs/tier-changes.md`](tier-changes.md).
+
+GenoADME is **not** allowed to reimplement what these building blocks already do. If a Sisyphus building block is missing or insufficient (for example, ECM auto-detection from a substrate registry), the response is to **open an issue against Sisyphus** (the user will decide whether to upstream a change) and track the gap in [`docs/validation-tiers.md`](validation-tiers.md) §Deferred. The response is *not* to reimplement the missing capability inside GenoADME.
+
+The no-genotype path of `predict_pk` is the simpler case — it delegates directly to `sisyphus.pipeline.predict.predict`, which is the convenience wrapper Sisyphus exposes for generic SMILES → PK use.
 
 ### What lives in `genoadme/`
 
 - `genoadme/pgx/genotype.py` — 1000 Genomes ingest, ADME variant extraction, individual-level genotype dataclass.
 - `genoadme/pgx/eqtl.py` — GTEx eQTL ingest, SNP-to-expression effect mapping, LD-aware sampling.
-- `genoadme/pgx/phenotype.py` — CPIC star-allele tables, categorical phenotype assignment (PM/IM/NM/RM/UM).
-- `genoadme/pgx/mapping.py` — hybrid (categorical + continuous) function that turns a genotype into a Sisyphus-compatible ADME parameter distribution.
+- `genoadme/pgx/phenotype.py` — CPIC star-allele tables, categorical phenotype *caller* (the missing piece — Sisyphus consumes phenotype labels but does not produce them from variant calls).
+- `genoadme/pgx/mapping.py` — hybrid (categorical + continuous) function that turns a genotype into a `{gene: phenotype_label}` dict consumed by `sisyphus.predict.phenotype.apply_phenotype_to_graph`.
 - `genoadme/audit.py` — query logging, seed verification, report generation.
-- `genoadme/validate.py` — validation entry points keyed to tier (`--tier 1`, `--tier 2`, `--tier all`).
+- `genoadme/validate.py` — validation entry points keyed to tier (`run_tier1`, etc.). The Tier 1 runner is the only place GenoADME orchestrates Sisyphus's lower-level building blocks; that orchestration mirrors `sisyphus/tests/integration/test_slco1b1_phenotype.py` line-for-line in spirit.
 
 ### What does not live in `genoadme/`
 
-- ODE solvers, scaffold-stratified holdout splitting, four-track ensemble logic, Bayesian refinement backends. All of these are `sisyphus.*` imports.
+- ODE solvers, scaffold-stratified holdout splitting, four-track ensemble logic, Bayesian refinement backends, top-level `predict()` orchestration (chemistry → ADME → drug-on-graph → engine → ML → meta-learner). All of these are `sisyphus.*` imports.
+- Phenotype label definitions (PM/IM/EM/NM/UM/RM) and activity multipliers — these are re-exported from `sisyphus.predict.phenotype.PHENOTYPE_SCALES` rather than redefined.
 
 -----
 
