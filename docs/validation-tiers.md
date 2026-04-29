@@ -76,17 +76,19 @@ The honest reporting of acknowledged gaps is what makes Tier 1 results credible.
 
 -----
 
-## Deferred — Pre-specified for v0.2+
+## Deferred — Pre-specified for v0.3+
 
-The pairs below were scoped for v0.1.0 but are deferred because each requires a specific Sisyphus capability extension that is itself a multi-commit project. They are listed here (rather than removed) so the preprint roadmap is part of the public commitment record. Promotion of any deferred pair to an active tier requires (a) the listed Sisyphus blocker to be resolved, (b) a `tier-change:` commit per [`docs/commit-discipline.md`](commit-discipline.md) §4, and (c) a re-run of the Tier 1 pravastatin validation to verify no methodological coupling.
+The pairs below were scoped for v0.1.0 but are deferred because each requires a specific Sisyphus capability extension that is itself a multi-commit project. They are listed here (rather than removed) so the public commitment record carries the full roadmap. Promotion of any deferred pair to an active tier requires (a) the listed Sisyphus blocker to be resolved, (b) a `tier-change:` commit per [`docs/commit-discipline.md`](commit-discipline.md) §4, and (c) a re-run of the Tier 1 pravastatin validation to verify no methodological coupling.
 
-|Pair                       |Original tier|Sisyphus blocker for v0.1.0                                                                                                            |
-|---------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------|
-|SLCO1B1 / simvastatin      |Tier 1       |Simvastatin (lactone) → simvastatin acid prodrug routing not in `data/sbi/prodrug_activation_registry.json`. The OATP1B1 substrate is the acid form. |
-|NAT2 / isoniazid           |Tier 1       |NAT2 not in `sisyphus.predict.phenotype.PHENOTYPE_SCALES`; NAT2 not represented in `data/physiology/reference_man.yaml` liver enzymes; isoniazid CLint not routed through NAT2 abundance.|
-|UGT1A1 / irinotecan        |Tier 1       |UGT1A1 not in `PHENOTYPE_SCALES` / `reference_man.yaml`. Irinotecan → SN-38 prodrug routing (carboxylesterase-mediated activation) not in the prodrug registry. SN-38 → glucuronide elimination via UGT1A1 not modeled. |
-|CYP2C19 / clopidogrel      |Tier 2       |Clopidogrel not in the prodrug activation registry. Active metabolite generation requires CYP2C19-mediated activation routing.        |
-|CYP2C9 / warfarin          |Tier 2       |Sisyphus's CLint is XGBoost-predicted from molecular descriptors and does not read enzyme abundance for non-ECM substrates; phenotype scaling has no PK propagation path.|
+The Sisyphus blockers below are tracked under the [Sisyphus v0.3 milestone](https://github.com/jam-sudo/Sisyphus/milestone/2); promotion to active tier here is tracked under the [GenoADME v0.3 milestone](https://github.com/jam-sudo/GenoADME/milestone/2).
+
+|Pair                       |Original tier|Sisyphus blocker for v0.1.0                                                                                                            |Tracking issue                                                                                                                          |
+|---------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+|SLCO1B1 / simvastatin      |Tier 1       |Simvastatin (lactone) → simvastatin acid prodrug routing not in `data/sbi/prodrug_activation_registry.json`. The OATP1B1 substrate is the acid form. |[Sisyphus#11](https://github.com/jam-sudo/Sisyphus/issues/11)                                                                           |
+|NAT2 / isoniazid           |Tier 1       |NAT2 not in `sisyphus.predict.phenotype.PHENOTYPE_SCALES`; NAT2 not represented in `data/physiology/reference_man.yaml` liver enzymes; isoniazid CLint not routed through NAT2 abundance.|[Sisyphus#10](https://github.com/jam-sudo/Sisyphus/issues/10)                                                                           |
+|UGT1A1 / irinotecan        |Tier 1       |UGT1A1 not in `PHENOTYPE_SCALES` / `reference_man.yaml`. Irinotecan → SN-38 prodrug routing (carboxylesterase-mediated activation) not in the prodrug registry. SN-38 → glucuronide elimination via UGT1A1 not modeled. |[Sisyphus#10](https://github.com/jam-sudo/Sisyphus/issues/10) + [Sisyphus#11](https://github.com/jam-sudo/Sisyphus/issues/11)            |
+|CYP2C19 / clopidogrel      |Tier 2       |Clopidogrel not in the prodrug activation registry. Active metabolite generation requires CYP2C19-mediated activation routing.        |[Sisyphus#11](https://github.com/jam-sudo/Sisyphus/issues/11)                                                                           |
+|CYP2C9 / warfarin          |Tier 2       |Sisyphus's CLint is XGBoost-predicted from molecular descriptors and does not read enzyme abundance for non-ECM substrates; phenotype scaling has no PK propagation path.|*no tracking issue yet — generic CYP-cleared substrates require an architectural change beyond v0.3 scope*                            |
 
 These blockers are specific Sisyphus issues, not GenoADME design choices. Resolving any of them is independent of the rest.
 

@@ -73,6 +73,19 @@ The reduction from six pairs to one was a pre-validation spec correction logged 
 
 -----
 
+## Roadmap
+
+Active versions track via GitHub milestones, each paired with the upstream Sisyphus dependency that gates it:
+
+|Milestone                           |GenoADME                                                                 |Sisyphus dependency                                                            |Closing condition                                                                                                                                                                                                                                |
+|------------------------------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**v0.2 — Tier 1 PASS**              |[milestone/1](https://github.com/jam-sudo/GenoADME/milestone/1)          |[Sisyphus milestone/1](https://github.com/jam-sudo/Sisyphus/milestone/1) (issue [#8](https://github.com/jam-sudo/Sisyphus/issues/8))             |Re-run `run_tier1()` against the SHA-pinned holdout produces population AAFE (AUC) ≤ 2.0 while PM/EM ratios stay in the v0.1.0 pre-spec band. Closes with a `metric-change:` commit per [`docs/commit-discipline.md`](docs/commit-discipline.md) §3. |
+|**v0.3 — Activate Deferred pairs**  |[milestone/2](https://github.com/jam-sudo/GenoADME/milestone/2)          |[Sisyphus milestone/2](https://github.com/jam-sudo/Sisyphus/milestone/2) (issues [#9](https://github.com/jam-sudo/Sisyphus/issues/9), [#10](https://github.com/jam-sudo/Sisyphus/issues/10), [#11](https://github.com/jam-sudo/Sisyphus/issues/11)) |Promote at least one pair from [`docs/validation-tiers.md`](docs/validation-tiers.md) §Deferred back to an active tier under a `tier-change:` commit per [`docs/commit-discipline.md`](docs/commit-discipline.md) §4.                                |
+
+Milestones intentionally separate **calibration** (v0.2 — moves the v0.1.0 PARTIAL number) from **capability** (v0.3 — extends Sisyphus to support drugs / genes the current build cannot represent at all). Either can be picked up independently of the other.
+
+-----
+
 ## Reproducibility
 
 Every reported metric regenerates from a single command on a clean clone:
