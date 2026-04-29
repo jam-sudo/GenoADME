@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "genoadme"
+version = "0.1.0"
+description = "Genotype-conditional ADME prediction — pharmacogenomic extension of Sisyphus"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Jae Min Yoon", email = "jaemin6013@gmail.com" }]
+
+# Sisyphus pin: HEAD of feat/prodrug-activation-v2 (origin) at the time of
+# v0.1.0 skeleton. The prodrug v2 work is required for Tier 2 CYP2C19 /
+# clopidogrel validation (clopidogrel's active metabolite is the species
+# of interest). v1.0.0 predates the prodrug v2 work and would silently
+# produce wrong predictions for clopidogrel; we deliberately do NOT pin
+# to it. Any change to this pin moves Tier-2 numbers and therefore
+# requires a `metric-change:` commit per docs/commit-discipline.md §3.
+dependencies = [
+    "sisyphus @ git+https://github.com/jam-sudo/Sisyphus.git@aef6f8e4a240cb1c18700ada155e50e76514ff4e",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+genoadme = "genoadme.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: tests that touch the full validation pipeline (run with --run-slow)",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/genoadme"]
