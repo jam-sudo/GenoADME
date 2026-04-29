@@ -138,7 +138,7 @@ def _real_pravastatin_simulator(
         load_oatp1b1_kinetics,
     )
 
-    sis_root = Path(sisyphus.__file__).resolve().parent.parent.parent.parent
+    sis_root = Path(sisyphus.__file__).resolve().parent.parent.parent
     phys_yaml = sis_root / "data" / "physiology" / "reference_man.yaml"
 
     profile = compute_profile(PRAVASTATIN_SMILES)
