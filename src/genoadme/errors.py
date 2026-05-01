@@ -43,6 +43,21 @@ class HoldoutNotGeneratedError(GenoADMEError):
     """
 
 
+class WorkingTreeNotCleanError(GenoADMEError):
+    """Raised when a validation-purpose audit entry is requested while a
+    participating repository's working tree is dirty.
+
+    Surfaced by GenoADME issue #1, motivated by the 2026-05-01
+    reproducibility audit (``docs/limitations.md`` §10.2): the original
+    2026-04-29 Tier 1 run logged ``git_sha`` but not working-tree state,
+    and Sisyphus's then-uncommitted prodrug-v2 WIP altered RNG draw
+    order, so the recorded SHA did not strictly reproduce the numbers.
+
+    Pass ``allow_dirty=True`` to ``audit.log_query`` for exploratory
+    runs (the entry is still logged, with ``worktree_clean: false``).
+    """
+
+
 def check_gene_supported(gene: str) -> None:
     """Raise ``UnsupportedGeneError`` if *gene* is in Tier 3."""
     if gene in TIER_3_GENES:

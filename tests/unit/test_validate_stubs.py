@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from genoadme import audit as audit_mod
 from genoadme.errors import HoldoutNotGeneratedError
 from genoadme.validate import (
     SimResult,
@@ -21,6 +22,26 @@ from genoadme.validate import (
     run_tier1,
     run_tier2,
 )
+
+
+@pytest.fixture
+def clean_repo_states(monkeypatch):
+    """Insulate runner tests from the actual dev-repo working-tree state.
+
+    The audit hook (GenoADME issue #1) refuses tier-purpose entries when
+    the working tree is dirty. Tests must pass regardless of whether the
+    dev who is running them has uncommitted changes — so we fake a clean
+    state for every participating repo. The wiring of ``allow_dirty`` is
+    covered by ``test_audit.py``; here we only verify the runner.
+    """
+    monkeypatch.setattr(
+        audit_mod,
+        "_collect_repo_states",
+        lambda: {
+            "genoadme": {"git_sha": "test-clean", "worktree_clean": True},
+            "sisyphus": {"git_sha": "test-clean", "worktree_clean": True},
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +114,7 @@ def _bundled_paths() -> tuple[Path, Path]:
 
 
 def test_run_tier1_against_bundled_data_with_fake_simulator(
-    tmp_path: Path,
+    tmp_path: Path, clean_repo_states
 ) -> None:
     holdout, calls = _bundled_paths()
     if not (holdout.exists() and calls.exists()):
@@ -142,7 +163,7 @@ def test_run_tier1_against_bundled_data_with_fake_simulator(
 
 
 def test_run_tier1_skip_reports_does_not_pollute_reports_dir(
-    tmp_path: Path,
+    tmp_path: Path, clean_repo_states
 ) -> None:
     holdout, calls = _bundled_paths()
     if not (holdout.exists() and calls.exists()):
@@ -194,7 +215,9 @@ def test_run_tier2_announces_empty_v01() -> None:
     assert "Deferred" in out["note"]
 
 
-def test_run_all_invokes_tier1_and_acks_tier2_3(tmp_path: Path) -> None:
+def test_run_all_invokes_tier1_and_acks_tier2_3(
+    tmp_path: Path, clean_repo_states
+) -> None:
     holdout, calls = _bundled_paths()
     if not (holdout.exists() and calls.exists()):
         pytest.skip("Bundled holdout / calls not committed")

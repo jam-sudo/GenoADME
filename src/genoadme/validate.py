@@ -459,6 +459,7 @@ def run_tier1(
     simulator: Simulator | None = None,
     audit_log_path: Path | None = None,
     write_reports: bool = True,
+    allow_dirty: bool = False,
 ) -> dict[str, Any]:
     """Run Tier 1 validation: SLCO1B1/pravastatin against the holdout.
 
@@ -492,6 +493,11 @@ def run_tier1(
         write_reports: Set to ``False`` to skip writing the dated
             Markdown + JSON reports (useful for tests / exploratory
             runs that should not pollute ``reports/``).
+        allow_dirty: Forwarded to ``audit.log_query``. By default the
+            audit hook refuses to log a tier-purpose entry when any
+            participating repo is dirty (GenoADME issue #1, motivated
+            by the 2026-05-01 reproducibility audit). Pass ``True`` for
+            an explicitly-marked exploratory run.
 
     Returns:
         Headline summary dict matching the schema in
@@ -500,6 +506,8 @@ def run_tier1(
     Raises:
         HoldoutNotGeneratedError: If the holdout file is missing.
         FileNotFoundError: If the calls TSV is missing.
+        WorkingTreeNotCleanError: If a participating repo is dirty and
+            ``allow_dirty`` is ``False``.
     """
     holdout_path = Path(holdout_path) if holdout_path else DEFAULT_HOLDOUT_PATH
     slco1b1_calls_path = (
@@ -520,6 +528,7 @@ def run_tier1(
         purpose="tier 1 validation",
         caller="genoadme.validate.run_tier1",
         log_path=audit_log_path,
+        allow_dirty=allow_dirty,
     )
 
     genotypes: list[Genotype] = load_slco1b1_calls(
@@ -576,6 +585,7 @@ def run_all(
     simulator: Simulator | None = None,
     audit_log_path: Path | None = None,
     write_reports: bool = True,
+    allow_dirty: bool = False,
 ) -> dict[str, Any]:
     """Run Tier 1 + acknowledge Tier 2 / Tier 3 status."""
     tier1 = run_tier1(
@@ -586,6 +596,7 @@ def run_all(
         simulator=simulator,
         audit_log_path=audit_log_path,
         write_reports=write_reports,
+        allow_dirty=allow_dirty,
     )
     return {
         "tier1": tier1,

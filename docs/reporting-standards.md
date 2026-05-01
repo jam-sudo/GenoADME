@@ -95,11 +95,13 @@ reports/audit-log.jsonl
 JSONL (one JSON object per line). Each line:
 
 ```json
-{"ts":"2026-06-12T18:30:00Z","holdout_id_list":"data/genotype/holdout500_ids.txt","purpose":"tier 1 final run","git_sha":"<sha>","caller":"genoadme.validate.run_tier1"}
+{"ts":"2026-06-12T18:30:00Z","holdout_id_list":"data/genotype/holdout500_ids.txt","purpose":"tier 1 final run","git_sha":"<sha>","caller":"genoadme.validate.run_tier1","worktree_clean":true,"deps":{"sisyphus":{"git_sha":"<sha>","worktree_clean":true}}}
 ```
 
 - Append-only. The file is never rewritten or compacted.
 - Every entry includes a `purpose` string. Allowed values are documented in [`scientific-integrity.md`](scientific-integrity.md) §5; new purpose strings are added by `audit:` commits with rationale.
+- `worktree_clean` is the GenoADME working-tree-clean assertion at query time. `deps.sisyphus.worktree_clean` is the same assertion for Sisyphus when it is installed as an editable git checkout. `false` for either means the entry's `git_sha` does not strictly reproduce the run; `null` means the assertion could not be made (e.g., Sisyphus installed from a wheel). For purposes prefixed with `"tier"` the audit hook refuses to log when any participating repo is dirty unless the caller passes `allow_dirty=True` — this enforces the lesson from the 2026-05-01 reproducibility audit ([`limitations.md`](limitations.md) §10.2).
+- Pre-2026-05-01 entries lack the `worktree_clean` and `deps` fields. They are preserved unchanged (the schema migration is forward-only).
 - The preprint Methods section reports the count and the distribution of `purpose` values.
 
 -----

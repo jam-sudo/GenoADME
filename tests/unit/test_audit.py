@@ -2,8 +2,9 @@
 
 The cherry-picking audit is the integrity hook that the preprint
 Methods section reports against. If these tests pass on a green CI,
-the audit log can be trusted to be append-only, JSONL-formatted, and
-honest about non-existent holdouts.
+the audit log can be trusted to be append-only, JSONL-formatted,
+honest about non-existent holdouts, and to refuse validation-purpose
+entries when a participating repo's working tree is dirty.
 """
 
 from __future__ import annotations
@@ -13,7 +14,9 @@ from pathlib import Path
 
 import pytest
 
+from genoadme import audit as audit_mod
 from genoadme.audit import log_query
+from genoadme.errors import GenoADMEError, WorkingTreeNotCleanError
 
 
 def test_log_query_appends_one_jsonl_line(tmp_path: Path) -> None:
@@ -89,3 +92,153 @@ def test_explicit_caller_overrides_inference(tmp_path: Path) -> None:
     log_query(holdout, purpose="x", caller="my.module.fn", log_path=log)
     entry = json.loads(log.read_text().strip())
     assert entry["caller"] == "my.module.fn"
+
+
+# ---------------------------------------------------------------------------
+# Working-tree-clean assertion (GenoADME issue #1, 2026-05-01 reproducibility
+# audit lesson per docs/limitations.md §10.2). Tests monkey-patch
+# _collect_repo_states so they are deterministic regardless of the actual
+# state of the working repo running the suite.
+# ---------------------------------------------------------------------------
+
+
+def _patch_repo_states(monkeypatch, states: dict) -> None:
+    monkeypatch.setattr(audit_mod, "_collect_repo_states", lambda: states)
+
+
+def test_log_query_records_worktree_clean_field(tmp_path: Path, monkeypatch) -> None:
+    _patch_repo_states(
+        monkeypatch,
+        {"genoadme": {"git_sha": "abc123", "worktree_clean": True}},
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    log_query(holdout, purpose="unit test", log_path=log)
+    entry = json.loads(log.read_text().strip())
+    assert entry["worktree_clean"] is True
+    assert entry["git_sha"] == "abc123"
+    assert entry["deps"] == {}
+
+
+def test_log_query_records_deps_with_sisyphus_state(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _patch_repo_states(
+        monkeypatch,
+        {
+            "genoadme": {"git_sha": "geno-sha", "worktree_clean": True},
+            "sisyphus": {"git_sha": "sis-sha", "worktree_clean": True},
+        },
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    log_query(holdout, purpose="unit test", log_path=log)
+    entry = json.loads(log.read_text().strip())
+    assert entry["deps"] == {
+        "sisyphus": {"git_sha": "sis-sha", "worktree_clean": True}
+    }
+
+
+def test_log_query_refuses_dirty_working_tree_for_tier_purpose(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _patch_repo_states(
+        monkeypatch,
+        {"genoadme": {"git_sha": "geno-sha", "worktree_clean": False}},
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    with pytest.raises(WorkingTreeNotCleanError) as exc:
+        log_query(holdout, purpose="tier 1 validation", log_path=log)
+    assert "genoadme" in str(exc.value)
+    assert not log.exists() or log.read_text() == ""
+
+
+def test_log_query_refuses_dirty_sisyphus_for_tier_purpose(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Even if GenoADME is clean, a dirty Sisyphus working tree blocks
+    a tier-purpose entry — that is exactly the 2026-04-29 failure mode.
+    """
+    _patch_repo_states(
+        monkeypatch,
+        {
+            "genoadme": {"git_sha": "geno-sha", "worktree_clean": True},
+            "sisyphus": {"git_sha": "sis-sha", "worktree_clean": False},
+        },
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    with pytest.raises(WorkingTreeNotCleanError) as exc:
+        log_query(holdout, purpose="tier 1 validation", log_path=log)
+    assert "sisyphus" in str(exc.value)
+
+
+def test_log_query_allow_dirty_overrides_for_tier_purpose(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _patch_repo_states(
+        monkeypatch,
+        {"genoadme": {"git_sha": "geno-sha", "worktree_clean": False}},
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    log_query(holdout, purpose="tier 1 validation", log_path=log, allow_dirty=True)
+    entry = json.loads(log.read_text().strip())
+    assert entry["worktree_clean"] is False
+
+
+def test_log_query_does_not_gate_non_tier_purposes(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A dirty working tree during ``"holdout generation"`` or unit-test
+    purposes is recorded (``worktree_clean: false``) but does not raise.
+    Validation runs are the gated case; everything else is just logged.
+    """
+    _patch_repo_states(
+        monkeypatch,
+        {"genoadme": {"git_sha": "geno-sha", "worktree_clean": False}},
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    log_query(holdout, purpose="holdout generation", log_path=log)
+    entry = json.loads(log.read_text().strip())
+    assert entry["worktree_clean"] is False
+    assert entry["purpose"] == "holdout generation"
+
+
+def test_log_query_unknown_clean_state_does_not_gate(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """``worktree_clean is None`` (e.g., Sisyphus installed from wheel)
+    is treated as 'unknown', not 'dirty'. The gate fires only on a
+    confirmed dirty tree — no false-positive blocks for users who
+    installed via PyPI.
+    """
+    _patch_repo_states(
+        monkeypatch,
+        {"genoadme": {"git_sha": "geno-sha", "worktree_clean": None}},
+    )
+    holdout = tmp_path / "holdout500_ids.txt"
+    holdout.write_text("HG00096\n")
+    log = tmp_path / "audit-log.jsonl"
+
+    log_query(holdout, purpose="tier 1 validation", log_path=log)
+    entry = json.loads(log.read_text().strip())
+    assert entry["worktree_clean"] is None
+
+
+def test_working_tree_not_clean_error_is_genoadme_error() -> None:
+    assert issubclass(WorkingTreeNotCleanError, GenoADMEError)
