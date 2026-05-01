@@ -2,7 +2,7 @@
 
 **Genotype-conditional ADME prediction for PBPK simulation.**
 
-Status: pre-release (v0.1.0). First Tier 1 validation run executed 2026-04-29 — **result: PARTIAL**. Direction gates (PM/EM PK ratios) pass; population-level magnitude (AAFE) fails due to a systematic Sisyphus underprediction of pravastatin exposure (~42% of the Niemi 2006 reference). The full report and headline numbers live at [`reports/validation-tier1-20260429.md`](reports/validation-tier1-20260429.md) / [`reports/headline-metrics-20260429.json`](reports/headline-metrics-20260429.json). Per the pre-spec, this is reported as a PARTIAL result, not silently demoted (see [`docs/validation-tiers.md`](docs/validation-tiers.md) "Pass criterion rationale" + [`docs/limitations.md`](docs/limitations.md) §10).
+Status: pre-release (v0.1.0). Tier 1 validation re-run 2026-05-01 from a strictly clean Sisyphus `aef6f8e` checkout — **result: PARTIAL**. The 2026-05-01 run [supersedes](reports/validation-tier1-20260429.md) the 2026-04-29 numbers (the earlier run depended on Sisyphus's then-uncommitted prodrug-v2 WIP, so it was not strictly reproducible). The current canonical report is [`reports/validation-tier1-20260501.md`](reports/validation-tier1-20260501.md) / [`reports/headline-metrics-20260501.json`](reports/headline-metrics-20260501.json). Population AAFE (AUC) **passes** (1.438 ≤ 2.0); the failing criterion is the PM/EM AUC ratio (2.737, target band [1.4, 2.5]) — a model-level mismatch between CPIC's PM scale and Sisyphus's ECM-dominant clearance, documented in [`docs/limitations.md` §10](docs/limitations.md). Both runs are part of the audit chain ([`reports/audit-log.jsonl`](reports/audit-log.jsonl)).
 
 -----
 

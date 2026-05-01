@@ -64,6 +64,36 @@ A third finding (separately documented in [`docs/limitations.md`](limitations.md
 
 -----
 
+### 2026-05-01 — Reproducibility audit of the 2026-04-29 Tier 1 validation run
+
+**Type:** Audit-grade correction. Not a tier change in the strict sense (no drug-gene pair moves between tiers). Logged here for traceability of the integrity record.
+
+**Commit:** *to be filled at commit time*
+**Trigger:** Investigation of the 2026-04-29 Tier 1 PARTIAL result while sizing the v0.2 calibration work surfaced that the original numbers were not strictly reproducible from the committed Sisyphus SHA pin. Sisyphus's working tree at the time of the 2026-04-29 run carried uncommitted prodrug-v2 WIP that altered the per-individual RNG draw order. The WIP was eventually merged into Sisyphus `main` (PR #7) but in slightly different form, so even checking out either the pinned `aef6f8e` SHA *or* the `feat/prodrug-activation-v2` branch HEAD does not reproduce the 2026-04-29 numbers.
+
+**Action taken:**
+
+1. Re-ran `genoadme.validate.run_tier1` from a strictly clean Sisyphus `aef6f8e` checkout. New report at [`reports/validation-tier1-20260501.md`](../reports/validation-tier1-20260501.md) and headline JSON at [`reports/headline-metrics-20260501.json`](../reports/headline-metrics-20260501.json).
+2. Appended a "Superseded" block to the 2026-04-29 report documenting that its numbers are no longer the canonical record. The audit-log entry from 2026-04-29 was preserved (append-only).
+3. Updated the README status line and `docs/limitations.md` §10 to point at the new canonical numbers.
+
+**Headline-criterion shift:**
+
+|Criterion                  |2026-04-29 result |2026-05-01 result |
+|---------------------------|------------------|------------------|
+|Population AAFE (AUC)      |2.204 (FAIL)      |1.438 (**PASS**)  |
+|PM/EM AUC ratio            |2.341 (PASS)      |2.737 (**FAIL**)  |
+|PM/EM Cmax ratio           |2.014 (PASS)      |2.068 (PASS)      |
+|Overall                    |PARTIAL           |PARTIAL           |
+
+The overall verdict (PARTIAL) is unchanged but the *failing criterion shifted*. This rediagnoses the v0.2 work scope: the gap is the PM/EM ratio over-shoot, not the AAFE underprediction.
+
+**Rationale (why this is logged here):** the audit chain integrity required the original record to stay (it does — the 2026-04-29 audit-log entry is untouched). But a reader following the 2026-04-29 numbers without seeing this entry would draw the wrong conclusion about which v0.2 work is needed. The honest disclosure is to mark the supersession in this log, in `docs/limitations.md` §10, in the report file itself, and in `README.md`.
+
+**Lesson:** for the future, validation runs must execute from a clean working tree, and the audit chain should add a working-tree-clean assertion alongside `git_sha`. This is a v0.2+ improvement to `genoadme.audit.log_query`.
+
+-----
+
 *No further tier changes recorded.*
 
 The pre-specified tiers committed in [`docs/validation-tiers.md`](validation-tiers.md) are still the active assignments as of the latest commit on `main`.

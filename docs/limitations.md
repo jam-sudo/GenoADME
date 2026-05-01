@@ -118,25 +118,37 @@ The implication for users: phenotype-conditional predictions from `genoadme.pred
 
 -----
 
-## 10. v0.1.0 Tier 1 result is PARTIAL — Sisyphus systematically underpredicts pravastatin exposure
+## 10. v0.1.0 Tier 1 result is PARTIAL — and the failing criterion was rediagnosed under reproducibility audit
 
-**Discovered:** 2026-04-29 (commit `133ab1f`).
+**Discovered:** 2026-04-29 (commit `133ab1f`); rediagnosed 2026-05-01 after the reproducibility audit below.
 
-The first Tier 1 validation run (`reports/validation-tier1-20260429.md`) produced these per-criterion results:
+### 10.1 Headline result (2026-05-01, strictly reproducible)
+
+The canonical Tier 1 validation run from [`reports/validation-tier1-20260501.md`](../reports/validation-tier1-20260501.md):
 
 |Criterion                                  |Threshold |Observed |Result|
 |-------------------------------------------|----------|---------|------|
-|Population AAFE (AUC)                      |≤ 2.0     |2.204    |FAIL  |
-|PM/EM AUC ratio                            |[1.4, 2.5]|2.341    |PASS  |
-|PM/EM Cmax ratio                           |≥ 1.3     |2.014    |PASS  |
+|Population AAFE (AUC)                      |≤ 2.0     |1.438    |PASS  |
+|PM/EM AUC ratio                            |[1.4, 2.5]|2.737    |FAIL  |
+|PM/EM Cmax ratio                           |≥ 1.3     |2.068    |PASS  |
 
-The direction gate (PM/EM PK ratios) passes — Sisyphus's OATP1B1 ECM correctly captures the SLCO1B1 phenotype effect on pravastatin disposition. The magnitude gate fails because Sisyphus's predicted EM AUC (0.106 mg·h/L) is ~42% of the published Niemi 2006 reference (0.250 mg·h/L). The same direction holds for Cmax (0.030 mg/L predicted vs 0.075 mg/L observed).
+Two of three criteria pass; the **failing criterion is the PM/EM AUC ratio over-shoot** (2.737 outside the [1.4, 2.5] band). Sisyphus's OATP1B1 ECM correctly captures the *direction* of the SLCO1B1 phenotype effect (PM > IM > EM), but the *magnitude* of the PM/EM exposure ratio is over-predicted because OATP1B1 is the dominant hepatic clearance term in the model and CPIC's `PM = 0.10×` scale (developed for "isolated phenotype effect") translates into a ~3-4× exposure shift when applied to the entire hepatic CL. Clinical SLCO1B1 PM/EM AUC ratio for pravastatin is reported in the 1.6–2.0× range (Niemi 2006).
 
-The systematic underprediction is upstream of GenoADME — it lives in Sisyphus's pravastatin pipeline (chemistry profile → ADME prediction → OATP1B1 ECM kinetic constants). GenoADME conditions correctly on top of whatever absolute level Sisyphus produces; the per-genotype ratios depend only on the OATP1B1 abundance scaling and pass the pre-spec criteria comfortably.
+This is a **model-level architectural mismatch** between CPIC labels and Sisyphus's ECM-dominant clearance, not a calibration constant that can be tuned alone. Resolution requires either (a) an explicit non-OATP CL term per drug to dampen the PM/EM ratio (Sisyphus issue #12, #14) or (b) a respec of the PM/EM ratio band in [`docs/validation-tiers.md`](validation-tiers.md). Investigation log in [Sisyphus issue #8 root-cause comment](https://github.com/jam-sudo/Sisyphus/issues/8).
 
-**Implication:** The v0.1.0 preprint reports this as a Tier 1 **PARTIAL** result. The framework demonstrates that genotype-conditional PK distributions can be produced from PBPK + variant calls + tissue eQTL effects, with the per-genotype ordering matching clinical expectation. The absolute-magnitude validation against published clinical means is bottlenecked on Sisyphus's substrate-specific calibration, which is a v0.2 dependency, not a v0.1.0 deliverable.
+### 10.2 Reproducibility audit (the 2026-04-29 numbers were not strictly reproducible)
 
-The PM cohort size (n=3) further widens the implicit CI on the PM/EM ratios — the result is directionally consistent but underpowered for tight magnitude inference. Rotating the holdout to enrich for EUR ancestry would inflate PM count but contaminate the holdout for any future ancestry-stratified analysis (so the rotation is not done; the n=3 limitation is reported as-is).
+The original 2026-04-29 Tier 1 validation reported AAFE FAIL + PM/EM PASS. The 2026-05-01 re-run from a strictly clean Sisyphus `aef6f8e` checkout produces AAFE PASS + PM/EM AUC FAIL — *the failing criterion shifted*.
+
+Root cause: at the time of the 2026-04-29 run, Sisyphus's working tree carried uncommitted prodrug-v2 WIP. That WIP altered the per-individual RNG draw order during `graph.sample(rng)` (one fewer rng.sample call per ProdrugActivationEdge), shifting deterministic numerical outputs even though the SLCO1B1/pravastatin code path itself was unchanged. The audit-log captured `git_sha` (HEAD at query time) but not the working-tree state, so the original record is *technically* truthful but not strictly reproducible.
+
+The WIP was eventually merged into Sisyphus `main` via PR #7, but in slightly different form, so even a later checkout of the prodrug-v2 branch HEAD does not reproduce the 2026-04-29 numbers exactly.
+
+**Lesson:** for strict reproducibility, validation must execute from a clean working tree, and the audit chain should record `git_sha` *plus* a working-tree-clean assertion. This is now enforced by the supersession block in [`reports/validation-tier1-20260429.md`](../reports/validation-tier1-20260429.md) and the [Corrections section in the new report](../reports/validation-tier1-20260501.md#corrections).
+
+### 10.3 Sample-size constraint (unchanged)
+
+The PM cohort size (n=3) widens the implicit CI on the PM/EM ratios — the result is directionally consistent but underpowered for tight magnitude inference. Rotating the holdout to enrich for EUR ancestry would inflate PM count but contaminate the holdout for any future ancestry-stratified analysis (so the rotation is not done; the n=3 limitation is reported as-is).
 
 -----
 

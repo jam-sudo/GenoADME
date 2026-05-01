@@ -49,3 +49,22 @@
 ## Corrections
 
 *None at time of first publication.*
+
+-----
+
+## Superseded
+
+This entire report is superseded by [`reports/validation-tier1-20260501.md`](validation-tier1-20260501.md). The numbers below were not strictly reproducible from any committed Sisyphus SHA: the run was performed against `aef6f8e` per the GenoADME `pyproject.toml` pin, but Sisyphus's working tree at the time also contained uncommitted prodrug-v2 WIP modifications that altered the per-individual RNG draw order. The WIP was eventually merged into Sisyphus `main` via PR #7, but in slightly different form, so even checking out the `prodrug-v2` branch HEAD does not reproduce these numbers exactly.
+
+The strictly-reproducible re-run against clean Sisyphus `aef6f8e` produces the metrics in the 2026-05-01 report. The overall verdict (PARTIAL) is unchanged but the **failing criterion has shifted**:
+
+|Metric                       |Superseded (this report) |Reproducible (2026-05-01) |
+|-----------------------------|-------------------------|--------------------------|
+|Population AAFE (AUC)        |2.204 (FAIL)             |1.438 (**PASS**)          |
+|PM/EM AUC ratio              |2.341 (PASS)             |2.737 (**FAIL** band [1.4, 2.5]) |
+|PM/EM Cmax ratio             |2.014 (PASS)             |2.068 (PASS)              |
+|Overall                      |PARTIAL                  |PARTIAL                   |
+
+The investigation that surfaced this discrepancy is logged in [Sisyphus issue #8](https://github.com/jam-sudo/Sisyphus/issues/8). The audit-trail entry referencing this superseded run remains in `reports/audit-log.jsonl` (timestamp `2026-04-29T20:37:21Z`, `git_sha=e4308e2c78...`) — the integrity rule is append-only, so the original record stays as evidence even when the numbers are wrong.
+
+The lesson: a `git_sha` field captures HEAD at query time, not working-tree state. For strict reproducibility, validation runs must execute from a clean working tree.
