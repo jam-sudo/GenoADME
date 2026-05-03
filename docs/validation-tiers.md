@@ -6,6 +6,7 @@ If a tier assignment changes after validation has run, the change is logged in [
 
 **Date of initial commitment:** 2026-04-29
 **v0.1.0 spec correction:** 2026-04-29 — see [`docs/tier-changes.md`](tier-changes.md) entry "Pre-validation spec correction (v0.1.0 scope)".
+**v0.2 spec re-anchor:** 2026-05-03 — Tier 1 reference anchoring made explicit per Sisyphus issue #8 closing recommendation. Population-mean Cmax anchored to **FDA Pravachol label** (large-cohort regulatory dataset); PM/EM ratios + population-mean AUC retained against **Niemi 2006** (the phenotype-effect reference). See [`docs/tier-changes.md`](tier-changes.md) entry "Tier 1 reference re-anchor (v0.2)" and [`docs/limitations.md`](limitations.md) §11.
 
 -----
 
@@ -25,7 +26,19 @@ Genes with strong eQTL signal in GTEx liver/intestine **and** CPIC Level A actio
 
 |Gene   |Drug       |Phenotype                              |Expected effect                                                |Tier 1 pass criterion                                                                            |
 |-------|-----------|---------------------------------------|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-|SLCO1B1|pravastatin|rs4149056 (*5) carriers vs non-carriers|+60–100% AUC in homozygous Poor Function carriers (Niemi 2006) |Population AAFE ≤ 2.0; PM vs EM predicted AUC ratio within 1.4–2.5×; PM vs EM Cmax ratio ≥ 1.3×  |
+|SLCO1B1|pravastatin|rs4149056 (*5) carriers vs non-carriers|+60–100% AUC in homozygous Poor Function carriers (Niemi 2006) |Population AAFE (AUC) ≤ 2.0; PM vs EM predicted AUC ratio within 1.4–2.5×; PM vs EM Cmax ratio ≥ 1.3×  |
+
+### Reference anchoring (v0.2 explicit)
+
+|Metric                            |Anchor                                            |Value                                  |Why this anchor                                                                                                                                                                                                                |
+|----------------------------------|--------------------------------------------------|---------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Population-mean Cmax (gating)     |**FDA Pravachol label** (large-cohort regulatory) |0.045 mg/L                             |Sisyphus issue #8 closing comment recommendation. The FDA value is anchored on a large-cohort regulatory dataset; Sisyphus's pravastatin pipeline (`scripts/calibrate_oatp_abundance_ecm.py`) is anchored against this and passes at FE 1.066. |
+|Population-mean AUC (gating)      |**Niemi 2006**                                    |0.250 mg·h/L                           |Niemi 2006 is the canonical SLCO1B1/pravastatin pharmacogenomic reference. The FDA Pravachol label does not publish AUC; Niemi 2006's value is consistent with Pasanen 2007.                                                  |
+|PM/EM AUC ratio (gating)          |**Niemi 2006**                                    |~2.0 (PM AUC 0.500 / EM AUC 0.250)     |Niemi 2006 was specifically designed to characterize the SLCO1B1 phenotype effect; its PM/EM ratio is the most direct clinical reference.                                                                                       |
+|PM/EM Cmax ratio (gating)         |**Niemi 2006**                                    |~2.6 (PM Cmax 0.195 / EM Cmax 0.075)   |Same as above.                                                                                                                                                                                                                  |
+|Population-mean Cmax (secondary)  |Niemi 2006                                        |0.075 mg/L                             |Reported as a secondary calibration check alongside the FDA-gated value, for transparency about the 1.67× Niemi/FDA gap (Niemi 2006 N=6, single study; FDA Pravachol large-cohort).                                            |
+
+**Why two anchors?** The FDA Pravachol Cmax (0.045 mg/L) and Niemi 2006 Cmax (0.075 mg/L) differ by 1.67× at the same dose. No single-knob calibration of Sisyphus can satisfy both. Sisyphus is anchored on FDA, so the population-mean Cmax gate uses FDA; the phenotype-effect references (PM/EM ratios) are pharmacogenomic studies and use Niemi 2006. Both anchors are reported in every validation result for transparency. The 1.67× gap is itself a documented limitation of single-study clinical references — neither anchor is "more correct"; they characterize different things.
 
 ### Why pravastatin (and not simvastatin) for v0.1.0
 
@@ -40,8 +53,8 @@ The pharmacogenomic principle (SLCO1B1 *5 / Poor Function → reduced hepatic up
 The Tier 1 pass criterion is split into two thresholds to separate *direction* from *magnitude*:
 
 - **PM vs EM Cmax ratio ≥ 1.3×** is the direction gate. It mirrors the gate already in Sisyphus's `tests/integration/test_slco1b1_phenotype.py::test_slco1b1_pm_increases_pravastatin_cmax`. Falling below this means the SLCO1B1-→OATP1B1-→hepatic-uptake-→plasma chain is broken end-to-end; this is a categorical Tier 1 failure.
-- **PM vs EM AUC ratio within 1.4–2.5×** is the magnitude gate, sourced from Niemi 2006 and Pasanen 2007 clinical observations of 1.6–2.0× in homozygous Poor Function carriers. The ±0.4× tolerance reflects (a) the published study-to-study variance and (b) the eQTL → mRNA → protein → activity → CL chain noise documented in [`docs/limitations.md`](limitations.md) §1.
-- **Population AAFE ≤ 2.0** is the population-level fit gate against published clinical CV.
+- **PM vs EM AUC ratio within 1.4–2.5×** is the magnitude gate, sourced from Niemi 2006 and Pasanen 2007 clinical observations of 1.6–2.0× in homozygous Poor Function carriers. The ±0.4× tolerance reflects (a) the published study-to-study variance and (b) the eQTL → mRNA → protein → activity → CL chain noise documented in [`docs/limitations.md`](limitations.md) §1. **Currently exceeded** under the v0.2 (post-Sisyphus #8) calibration — see [`docs/limitations.md`](limitations.md) §11. The band is *not* widened post-hoc; the over-shoot is reported as a known limitation pending v0.3 investigation of CPIC PM=0.10× scale appropriateness for graph-based PBPK models.
+- **Population AAFE (AUC) ≤ 2.0** is the population-level fit gate against the Niemi 2006 AUC reference (0.250 mg·h/L). The Cmax AAFE is reported as a secondary check against the FDA Pravachol Cmax reference (0.045 mg/L) but is *not* gated, because Sisyphus's calibration is itself anchored on the FDA Cmax (Sisyphus passes its own ECM gate at FE 1.066) and double-counting that anchor as a GenoADME gate would test Sisyphus's calibration rather than GenoADME's PGx layer.
 
 A run that meets the direction gate but fails the magnitude gate is a Tier 1 partial result — reported as such in the preprint, not silently demoted.
 

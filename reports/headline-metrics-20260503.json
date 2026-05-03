@@ -35,10 +35,34 @@
       "reference": {
         "drug": "pravastatin",
         "dose_mg": 40.0,
-        "population": "healthy volunteers, predominantly SLCO1B1 NM",
-        "cmax_mg_per_L": 0.075,
+        "anchoring_version": "v0.2",
+        "anchoring_doc": "docs/validation-tiers.md#reference-anchoring-v02-explicit",
+        "anchors": {
+          "population_cmax_gating": {
+            "value_mg_per_L": 0.045,
+            "source": "FDA Pravachol full prescribing information (large-cohort regulatory)"
+          },
+          "population_auc_gating": {
+            "value_mg_h_per_L": 0.25,
+            "source": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8"
+          },
+          "pm_em_auc_ratio_gating": {
+            "value": 2.0,
+            "source": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8 (PM AUC 0.500 / EM AUC 0.250)"
+          },
+          "pm_em_cmax_ratio_gating": {
+            "value": 2.6,
+            "source": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8 (PM Cmax 0.195 / EM Cmax 0.075)"
+          },
+          "population_cmax_secondary": {
+            "value_mg_per_L": 0.075,
+            "source": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8 (N=6 EM cohort, transparency check)"
+          }
+        },
+        "population": "healthy volunteers; FDA cohort is broader, Niemi cohort is canonical SLCO1B1 PGx reference",
+        "cmax_mg_per_L": 0.045,
         "auc_mg_h_per_L": 0.25,
-        "citation": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8"
+        "citation": "FDA Pravachol label (Cmax) + Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8 (AUC, PM/EM ratios)"
       }
     }
   },

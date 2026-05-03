@@ -158,6 +158,46 @@ The PM cohort size (n=3) widens the implicit CI on the PM/EM ratios — the resu
 
 -----
 
+## 11. PM/EM AUC ratio over-shoot under graph-compounded CPIC scaling
+
+**Discovered:** 2026-05-03 (commit *to be filled at commit time* — `tier-change:` Tier 1 reference re-anchor).
+
+### 11.1 Empirical signal
+
+Under Sisyphus pin `9f1680d` (issue #8 closing state), the GenoADME holdout produces:
+
+|Metric                 |Value  |Niemi 2006 reference        |Result                                |
+|-----------------------|-------|----------------------------|--------------------------------------|
+|PM/EM AUC ratio        |4.482  |~2.0 (PM 0.500 / EM 0.250)  |FAIL band [1.4, 2.5] (over-shoot)     |
+|PM/EM Cmax ratio       |2.639  |~2.6 (PM 0.195 / EM 0.075)  |PASS gate ≥ 1.3 (direction correct)   |
+|Population AAFE (AUC)  |1.152  |Niemi 0.250 mg·h/L          |PASS (≤ 2.0)                          |
+|Population AAFE (Cmax) |1.131* |FDA Pravachol 0.045 mg/L    |PASS but not gated (anchor reasoning) |
+
+\* AAFE Cmax against FDA: pred 0.0509 / FDA 0.045 = 1.131. Against Niemi 0.075 the same prediction yields 1.474. The two-anchor reporting follows from the [`docs/validation-tiers.md`](validation-tiers.md) §"Reference anchoring" rationale.
+
+### 11.2 Mechanism
+
+Sisyphus issue #8 closing comment diagnoses the over-shoot:
+
+> PM AUC is over-predicted (0.81×) while EM AUC is under-predicted (1.71×) — this is **not** a constant-fold systematic bias and is therefore inconsistent with a single scaling-parameter fix... CPIC PM activity scaling (0.10×) may be too aggressive for AUC; this would need separate investigation but is community-standard so not a Sisyphus-specific defect.
+
+The CPIC PM = 0.10× activity multiplier is published per-enzyme-or-transporter and is community-standard for *isolated phenotype-effect* calculations. Applied to a graph-based PBPK model where the OATP1B1 abundance enters multiple coupled clearance terms (uptake, sinusoidal efflux, hepatocellular partition), the same 0.10× compounds beyond the published per-enzyme effect. The 4.48× PM/EM AUC ratio observed here is consistent with this compounding hypothesis.
+
+### 11.3 Resolution path
+
+This is a v0.3 work item. Two non-exclusive directions:
+
+- **(11.3a) Per-substrate CPIC scale calibration.** Investigate whether the CPIC 0.10× scale should be replaced by a per-substrate multiplier when applied through a graph-compounded model. Open-data study-level meta-analysis (Niemi 2006 + Pasanen 2007 + later SLCO1B1 cohorts) could fit a per-substrate effective scale such that the graph-compounded PM/EM AUC matches the clinical mid-band.
+- **(11.3b) Re-spec the [1.4, 2.5] PM/EM AUC band.** Only after (11.3a) shows the empirical PM/EM AUC ratio under graph-compounded scaling is *itself* in a band other than [1.4, 2.5], and only via a `tier-change:` commit with a study-meta-analysis citation. Not a face-saving widen; a re-spec backed by evidence.
+
+The PM/EM AUC band is **not** widened in v0.2. The over-shoot is reported as-is.
+
+### 11.4 Why this is in §11 and not §10
+
+§10 is about reproducibility and Sisyphus-pin-driven number shifts. §11 is about a residual model-level architectural mismatch that is *known* to be unsolved at the v0.2 level. The two are distinct and both will be referenced from the preprint Limitations section.
+
+-----
+
 ## Adding to this document
 
 New limitations are added with the format:

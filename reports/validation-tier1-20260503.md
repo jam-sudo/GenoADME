@@ -36,10 +36,33 @@
 
 ## Reference
 
-- Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8
-- Reference Cmax: 0.075 mg/L
-- Reference AUC: 0.25 mg·h/L
-- Reference population: healthy volunteers, predominantly SLCO1B1 NM
+Per the v0.2 reference anchoring made explicit in [`docs/validation-tiers.md`](../docs/validation-tiers.md) §"Reference anchoring" (`tier-change:` 2026-05-03):
+
+|Metric                            |Anchor                |Value             |
+|----------------------------------|----------------------|------------------|
+|Population-mean Cmax (gating)     |FDA Pravachol label   |0.045 mg/L        |
+|Population-mean AUC (gating)      |Niemi 2006            |0.250 mg·h/L      |
+|PM/EM AUC ratio (gating)          |Niemi 2006            |~2.0              |
+|PM/EM Cmax ratio (gating)         |Niemi 2006            |~2.6              |
+|Population-mean Cmax (secondary)  |Niemi 2006            |0.075 mg/L        |
+
+References:
+
+- FDA Pravachol Pravastatin Sodium Tablets full prescribing information (large-cohort regulatory dataset).
+- Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8 (N=6, EM cohort, healthy volunteers, predominantly SLCO1B1 NM).
+- Reference population: healthy volunteers; the FDA cohort is broader, the Niemi cohort is the canonical SLCO1B1/pravastatin pharmacogenomic reference.
+
+The 1.67× Niemi/FDA Cmax gap is itself a documented limitation — neither anchor is "more correct"; they characterize different things (regulatory mean exposure vs. phenotype-effect study). See [`docs/limitations.md`](../docs/limitations.md) §11 for the full mechanism behind the PM/EM AUC ratio over-shoot under the v0.2 calibration.
+
+### Recomputed AAFE under new anchoring
+
+|Metric                            |Anchor      |Value         |Predicted (this run) |Fold-error |
+|----------------------------------|------------|--------------|---------------------|-----------|
+|Population AAFE Cmax (secondary)  |FDA 0.045   |0.045         |0.0509               |1.131      |
+|Population AAFE Cmax (secondary)  |Niemi 0.075 |0.075         |0.0509               |1.474      |
+|Population AAFE AUC (gating)      |Niemi 0.250 |0.250         |0.2170               |1.152      |
+
+The gating verdict (Population AAFE AUC ≤ 2.0, PM/EM AUC in [1.4, 2.5], PM/EM Cmax ≥ 1.3) is unchanged: PARTIAL with the failing criterion the PM/EM AUC ratio over-shoot.
 
 ## Audit notes
 

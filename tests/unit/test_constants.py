@@ -35,20 +35,55 @@ def _section(text: str, heading_pattern: str) -> str:
 
 
 def _table_first_two_columns(section: str) -> list[tuple[str, str]]:
-    """Extract (col1, col2) from every data row of every pipe-table in *section*."""
+    """Extract (col1, col2) from data rows of pipe-tables in *section*
+    whose first-column header is ``Gene`` (the tier pairs/genes tables).
+    Other tables in the section (e.g. the v0.2 Reference-Anchoring table
+    introduced 2026-05-03, headed ``Metric``) are skipped.
+
+    State machine over lines:
+
+    - ``HEADER_PENDING``: just saw the first ``|`` row of a new table —
+      decide if it's a Gene-table by checking col1.
+    - ``IN_DATA_KEEP`` / ``IN_DATA_SKIP``: separator row passed; collect
+      from KEEP tables only.
+    - ``OUTSIDE``: not currently inside a pipe-table.
+    """
+    HEADER_PENDING, IN_DATA_KEEP, IN_DATA_SKIP, OUTSIDE = range(4)
+    state = OUTSIDE
     rows: list[tuple[str, str]] = []
+
+    def _is_separator(cells: list[str]) -> bool:
+        return all(c and set(c) <= set("-:") for c in cells)
+
     for line in section.splitlines():
         line = line.strip()
         if not line.startswith("|"):
+            state = OUTSIDE
             continue
         cols = [c.strip() for c in line.strip("|").split("|")]
         if len(cols) < 2:
             continue
         col1, col2 = cols[0], cols[1]
-        # Skip header (Gene/Drug) and separator rows (---).
-        if col1.lower() in {"gene", ""} or set(col1) <= set("-:"):
+
+        if state == OUTSIDE:
+            # First row of a new table is the header.
+            state = HEADER_PENDING
+            keep_this_table = col1.lower() == "gene"
             continue
-        rows.append((col1, col2))
+
+        if state == HEADER_PENDING:
+            # The row right after the header should be the separator.
+            if _is_separator(cols):
+                state = IN_DATA_KEEP if keep_this_table else IN_DATA_SKIP
+            else:
+                # Malformed table; treat as outside and re-enter below.
+                state = OUTSIDE
+            continue
+
+        # IN_DATA_KEEP or IN_DATA_SKIP — data row.
+        if state == IN_DATA_KEEP:
+            rows.append((col1, col2))
+
     return rows
 
 

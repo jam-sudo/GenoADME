@@ -94,6 +94,51 @@ The overall verdict (PARTIAL) is unchanged but the *failing criterion shifted*. 
 
 -----
 
+### 2026-05-03 — Tier 1 reference re-anchor (v0.2)
+
+**Type:** Tier-1 reference anchoring change. No drug-gene pair moves between tiers and no pass-criterion threshold changes. The change is to which clinical reference value backs each metric.
+
+**Commit:** *to be filled at commit time*
+**Trigger:** Sisyphus issue #8 closing comment ([`9f1680d`](https://github.com/jam-sudo/Sisyphus/commit/9f1680d), 2026-05-02). After PR #22 (OATP1B1/ECM reconciliation) + PR #25 (pravastatin SMILES connectivity fix), Sisyphus is calibrated to FDA Pravachol Cmax (0.045 mg/L), passing its ECM gate at FE 1.066. The 2026-05-03 GenoADME re-run under that pin (`reports/validation-tier1-20260503.md`) reproduced the closing-comment direction: AAFE deeper inside band, PM/EM AUC ratio over-shoot more pronounced.
+
+**Old anchoring (implicit, v0.1.0):**
+- All Tier 1 metrics scored against Niemi 2006 (Cmax 0.075 mg/L, AUC 0.250 mg·h/L, PM/EM AUC ~2.0, PM/EM Cmax ~2.6).
+- Single anchor was a v0.1.0 simplification, not a deliberate scientific choice.
+
+**New anchoring (explicit, v0.2):**
+- Population-mean Cmax (gating) → **FDA Pravachol** 0.045 mg/L.
+- Population-mean AUC (gating) → Niemi 2006 0.250 mg·h/L (FDA does not publish AUC).
+- PM/EM AUC ratio (gating) → Niemi 2006 ~2.0.
+- PM/EM Cmax ratio (gating) → Niemi 2006 ~2.6.
+- Population-mean Cmax against Niemi 2006 (0.075 mg/L) → **secondary** report, transparency check on the 1.67× Niemi/FDA gap.
+
+**Pass criterion thresholds:** unchanged. Population AAFE (AUC) ≤ 2.0; PM/EM AUC ratio in [1.4, 2.5]; PM/EM Cmax ratio ≥ 1.3.
+
+**Rationale:** Sisyphus is FDA-anchored (large-cohort regulatory dataset), so GenoADME's population-mean Cmax gate is most informative against the same reference — gating against Niemi 2006 (N=6) would test Sisyphus's calibration choice rather than GenoADME's PGx layer. PM/EM ratios are pharmacogenomic phenotype-effect references, and Niemi 2006 was specifically designed to characterize that — so those gates retain Niemi 2006. The 1.67× gap between FDA and Niemi Cmax is itself a published-reference limitation, not a model defect; reporting both anchors makes the gap visible rather than hiding it.
+
+**Re-run scope:** `reports/validation-tier1-20260503.md` is the v0.2 canonical run. Same numerical outputs (deterministic from Sisyphus pin + seed + holdout) score against the new reference table. The 20260503 report and `headline-metrics-20260503.json` are amended in this commit to include both anchors. No simulator re-run is needed because the simulation is independent of the reference table.
+
+**Headline-criterion shift under new anchoring:**
+
+|Criterion                       |2026-05-03 result vs old anchor (Niemi)|2026-05-03 result vs new anchor table |Shift                                    |
+|--------------------------------|----------------------------------------|-----------------------------------------|-----------------------------------------|
+|Population AAFE (Cmax) — secondary  |1.474 (vs Niemi 0.075)                |1.131 (vs FDA 0.045)                     |Reported, not gated; FDA shows tighter fit|
+|Population AAFE (AUC) — gating  |1.152 (vs Niemi 0.250)                  |1.152 (unchanged — Niemi)                |No shift                                 |
+|PM/EM AUC ratio — gating        |4.482                                   |4.482                                    |No shift; still FAIL band [1.4, 2.5]     |
+|PM/EM Cmax ratio — gating       |2.639                                   |2.639                                    |No shift; PASS unchanged                 |
+|Overall verdict                 |PARTIAL                                 |PARTIAL                                  |No shift                                 |
+
+The verdict is unchanged. The re-anchor is honest because (a) the old single-anchor choice was an unexamined v0.1.0 simplification; (b) FDA-anchoring on Cmax is the Sisyphus calibration's actual reference; (c) the PM/EM ratio FAIL is *more* visible under the explicit anchoring (the over-shoot is real and is the v0.2 known limitation), not less.
+
+**Disclosure:** This change is documented in:
+- [`docs/validation-tiers.md`](validation-tiers.md) §"Reference anchoring (v0.2 explicit)" — added.
+- [`docs/limitations.md`](limitations.md) §11 — added; details the PM/EM AUC over-shoot mechanism and v0.3 resolution path.
+- [`README.md`](../README.md) status line — already updated to point at the 2026-05-03 canonical report.
+- [`reports/validation-tier1-20260503.md`](../reports/validation-tier1-20260503.md) — Reference section amended to include both anchors.
+- [`reports/headline-metrics-20260503.json`](../reports/headline-metrics-20260503.json) — `reference` field amended to include both anchors.
+
+-----
+
 *No further tier changes recorded.*
 
 The pre-specified tiers committed in [`docs/validation-tiers.md`](validation-tiers.md) are still the active assignments as of the latest commit on `main`.
