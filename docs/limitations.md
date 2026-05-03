@@ -118,23 +118,29 @@ The implication for users: phenotype-conditional predictions from `genoadme.pred
 
 -----
 
-## 10. v0.1.0 Tier 1 result is PARTIAL — and the failing criterion was rediagnosed under reproducibility audit
+## 10. v0.1.0 / v0.2 Tier 1 result is PARTIAL — failing criterion shifted across two reproducibility/calibration events
 
-**Discovered:** 2026-04-29 (commit `133ab1f`); rediagnosed 2026-05-01 after the reproducibility audit below.
+**Discovered:** 2026-04-29 (commit `133ab1f`); rediagnosed 2026-05-01 after the reproducibility audit (§10.2); reconfirmed 2026-05-03 under the post-Sisyphus-#8 calibration (§10.1, current canonical).
 
-### 10.1 Headline result (2026-05-01, strictly reproducible)
+### 10.1 Headline result (2026-05-03, current canonical)
 
-The canonical Tier 1 validation run from [`reports/validation-tier1-20260501.md`](../reports/validation-tier1-20260501.md):
+The canonical Tier 1 validation run from [`reports/validation-tier1-20260503.md`](../reports/validation-tier1-20260503.md), executed under Sisyphus pin `9f1680d` (issue #8 closing commit — includes PR #22 OATP1B1/ECM reconciliation, PR #25 pravastatin SMILES fix, PR #28 digoxin SMILES fix):
 
 |Criterion                                  |Threshold |Observed |Result|
 |-------------------------------------------|----------|---------|------|
-|Population AAFE (AUC)                      |≤ 2.0     |1.438    |PASS  |
-|PM/EM AUC ratio                            |[1.4, 2.5]|2.737    |FAIL  |
-|PM/EM Cmax ratio                           |≥ 1.3     |2.068    |PASS  |
+|Population AAFE (AUC)                      |≤ 2.0     |1.152    |PASS  |
+|PM/EM AUC ratio                            |[1.4, 2.5]|4.482    |FAIL  |
+|PM/EM Cmax ratio                           |≥ 1.3     |2.639    |PASS  |
 
-Two of three criteria pass; the **failing criterion is the PM/EM AUC ratio over-shoot** (2.737 outside the [1.4, 2.5] band). Sisyphus's OATP1B1 ECM correctly captures the *direction* of the SLCO1B1 phenotype effect (PM > IM > EM), but the *magnitude* of the PM/EM exposure ratio is over-predicted because OATP1B1 is the dominant hepatic clearance term in the model and CPIC's `PM = 0.10×` scale (developed for "isolated phenotype effect") translates into a ~3-4× exposure shift when applied to the entire hepatic CL. Clinical SLCO1B1 PM/EM AUC ratio for pravastatin is reported in the 1.6–2.0× range (Niemi 2006).
+Two of three criteria pass. The **failing criterion is the PM/EM AUC ratio over-shoot** (4.482 outside the [1.4, 2.5] band). Under the post-Sisyphus-#8 calibration the AAFE criterion is now comfortably inside its band (1.152 vs 2.0 threshold) — Sisyphus's OATP1B1/ECM reconciliation closed the population-mean-magnitude gap that drove the 2026-04-29 AAFE FAIL. The PM/EM AUC ratio over-shoot is *more pronounced* than under the prior Sisyphus state (was 2.737 at pin `aef6f8e`, now 4.482 at pin `9f1680d`).
 
-This is a **model-level architectural mismatch** between CPIC labels and Sisyphus's ECM-dominant clearance, not a calibration constant that can be tuned alone. Resolution requires either (a) an explicit non-OATP CL term per drug to dampen the PM/EM ratio (Sisyphus issue #12, #14) or (b) a respec of the PM/EM ratio band in [`docs/validation-tiers.md`](validation-tiers.md). Investigation log in [Sisyphus issue #8 root-cause comment](https://github.com/jam-sudo/Sisyphus/issues/8).
+Sisyphus issue #8 closing comment diagnosed the residual gap: PM AUC is over-predicted (0.81× vs Niemi clinical) while EM AUC is under-predicted (1.71× vs Niemi clinical) — this is *not* a constant-fold bias, so no single scaling parameter can close both ends. The closing comment attributes the over-shoot to "CPIC PM activity scaling (0.10×) may be too aggressive for AUC; this would need separate investigation but is community-standard so not a Sisyphus-specific defect."
+
+Resolution paths:
+
+- **(R1) Re-anchor the population-mean Cmax reference to FDA Pravachol label** (0.045 mg/L) per Sisyphus #8 closing recommendation, while retaining Niemi 2006 for the PM/EM ratio direction check. This reflects the empirical reality that FDA's large-cohort regulatory dataset and Niemi 2006's N=6 EM cohort cannot be satisfied by a single-knob calibration. Logged in [`docs/tier-changes.md`](tier-changes.md).
+- **(R2) Investigate CPIC PM=0.10× scale appropriateness** for AUC-level metrics in graph-based PBPK models. This is a v0.3 work item — the CPIC scale is community-standard, so the investigation question is whether GenoADME's PM/EM ratio band itself was set with insufficient appreciation of how the 0.10× compounds through Sisyphus's graph layer. See v0.3 milestone for scope.
+- **(R3) Document the PM/EM AUC over-shoot as a known limitation** until R2 resolves. The PM/EM Cmax ratio still passes, the AAFE PASSES, and the *direction* of the SLCO1B1 phenotype effect is correctly captured (PM > IM > EM). v0.2 closing accepts the PARTIAL verdict explicitly rather than tuning the band post-hoc.
 
 ### 10.2 Reproducibility audit (the 2026-04-29 numbers were not strictly reproducible)
 
@@ -144,7 +150,7 @@ Root cause: at the time of the 2026-04-29 run, Sisyphus's working tree carried u
 
 The WIP was eventually merged into Sisyphus `main` via PR #7, but in slightly different form, so even a later checkout of the prodrug-v2 branch HEAD does not reproduce the 2026-04-29 numbers exactly.
 
-**Lesson:** for strict reproducibility, validation must execute from a clean working tree, and the audit chain should record `git_sha` *plus* a working-tree-clean assertion. This is now enforced by the supersession block in [`reports/validation-tier1-20260429.md`](../reports/validation-tier1-20260429.md) and the [Corrections section in the new report](../reports/validation-tier1-20260501.md#corrections).
+**Lesson:** for strict reproducibility, validation must execute from a clean working tree, and the audit chain should record `git_sha` *plus* a working-tree-clean assertion. This is now enforced by the supersession block in [`reports/validation-tier1-20260429.md`](../reports/validation-tier1-20260429.md), the [Corrections section in the 2026-05-01 report](../reports/validation-tier1-20260501.md#corrections), and — codified in code — the `worktree_clean` field plus the `WorkingTreeNotCleanError` gate in [`genoadme.audit.log_query`](../src/genoadme/audit.py) (GenoADME issue #1, commit `013d17d`). Both the 2026-05-03 canonical run and any future tier-purpose run cannot now log an audit entry from a dirty tree without an explicit `allow_dirty=True` opt-in.
 
 ### 10.3 Sample-size constraint (unchanged)
 

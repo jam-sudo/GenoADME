@@ -64,3 +64,20 @@ This report supersedes the following metrics from [`reports/validation-tier1-202
 |Overall verdict              |PARTIAL          |PARTIAL          |Verdict unchanged, but failing criterion shifted |
 
 No code change in Sisyphus or GenoADME caused this. The cause is purely working-tree state at the time of the earlier run. The lesson is documented in [`docs/limitations.md` §10](../docs/limitations.md).
+
+-----
+
+## Superseded
+
+This entire report is superseded by [`reports/validation-tier1-20260503.md`](validation-tier1-20260503.md). The Sisyphus pin used for this run (`aef6f8e4...`) is no longer reachable from `origin/main` and was bumped in GenoADME commit `0a2e049` to `9f1680d` (Sisyphus issue #8 closing state). The 2026-05-03 re-run produces:
+
+|Metric                       |Superseded (this report) |New canonical (2026-05-03)|
+|-----------------------------|-------------------------|--------------------------|
+|Population AAFE (AUC)        |1.438 (PASS)             |1.152 (PASS, deeper inside band)|
+|PM/EM AUC ratio              |2.737 (FAIL [1.4, 2.5])  |4.482 (FAIL, more pronounced)   |
+|PM/EM Cmax ratio             |2.068 (PASS)             |2.639 (PASS)                    |
+|Overall                      |PARTIAL                  |PARTIAL                         |
+
+The verdict is unchanged. The failing criterion is the same. The numbers shift because Sisyphus PR #22 (OATP1B1/ECM double-counting reconciliation) and PR #25 (pravastatin SMILES connectivity fix) both move the pravastatin pipeline. The CPIC PM=0.10× over-shoot on AUC is *more* pronounced under the new Sisyphus calibration — Sisyphus issue #8 closing comment notes this is "community-standard and not a Sisyphus-specific defect" and recommends GenoADME re-anchor population mean Cmax to FDA Pravachol while retaining Niemi 2006 for the PM/EM direction check.
+
+The audit-log entries for both this run (2026-05-01) and the 2026-04-29 run remain in place as evidence those runs occurred.
