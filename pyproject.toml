@@ -11,23 +11,30 @@ requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Jae Min Yoon", email = "jaemin6013@gmail.com" }]
 
-# Sisyphus pin: Sisyphus issue #8 closing commit on origin/main. This
-# state includes PR #22 (OATP1B1/ECM reconciliation, closes #12/#13/#14)
-# + PR #25 (pravastatin SMILES connectivity fix) + PR #28 (digoxin
-# SMILES fix) — i.e., the calibration that the Sisyphus #8 closing
-# comment's diagnostic was based on. Pinning here makes the GenoADME
-# Tier 1 numbers strictly comparable to that diagnostic.
+# Sisyphus pin: PR #33 merge commit on origin/main (v0.3.3 release).
+# This state includes:
+#   - PR #22 — OATP1B1/ECM reconciliation (#12/#13/#14)
+#   - PR #25 — pravastatin SMILES connectivity fix
+#   - PR #28 — digoxin SMILES fix
+#   - PR #29/#30 — ECM auto-activation (v0.3, v0.3.1)
+#   - PR #32 — NAT2/UGT1A1 propagation + back-solve cancellation fix
+#     (v0.3.2). This was the latent bug causing CYP/UGT/NAT phenotype
+#     scaling to silently produce ratio = 1.000 in v0.1.0 GenoADME tests.
+#   - PR #33 — phenotype_scale_overrides API hook (v0.3.3). Closes
+#     Sisyphus #31, the capability needed for GenoADME's v0.3 per-
+#     substrate CPIC scale calibration (P-ii path per
+#     docs/v0.3-meta-analysis.md §2.7).
 #
-# The previous pin (aef6f8e4a240cb1c18700ada155e50e76514ff4e — feat/
-# prodrug-activation-v2 HEAD at v0.1.0 skeleton time) is no longer
-# reachable from origin/main and is preserved only in the audit log
-# entries dated 2026-04-29 and 2026-05-01.
+# Pin-bump audit chain:
+#   - aef6f8e4 (v0.1.0 skeleton, no longer reachable from origin/main)
+#   - 9f1680d  (Sisyphus #8 closing state, 2026-05-03 canonical)
+#   - bf764c55 (PR #33 merge, v0.3.3 — current pin)
 #
 # Any change to this pin moves Tier 1 numbers and therefore requires
 # a `metric-change:` commit per docs/commit-discipline.md §3 (or a
 # `tier-change:` commit if the spec is also re-anchored).
 dependencies = [
-    "sisyphus @ git+https://github.com/jam-sudo/Sisyphus.git@9f1680d083d9fd64704c54877d75daf5ce5c170d",
+    "sisyphus @ git+https://github.com/jam-sudo/Sisyphus.git@bf764c55dcb5b82c79116e5ff5d2395ffd9adc67",
     "numpy>=1.24",
     "pyyaml>=6.0",
 ]
