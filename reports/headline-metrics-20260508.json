@@ -1,11 +1,11 @@
 {
   "schema_version": "1",
   "report": "reports/validation-tier1-20260508.md",
-  "git_sha": "90a2f0a48b45c7bef6cbd69c133fb9ea4b690e28",
+  "git_sha": "76738aa0ab66523a181c0d72124d2e6133c6844c",
   "genoadme_version": "0.1.0",
   "holdout_id_list": "data/genotype/holdout500_ids.txt",
   "seed": 42,
-  "timestamp_utc": "2026-05-08T18:16:55Z",
+  "timestamp_utc": "2026-05-08T18:25:31Z",
   "tier1": {
     "SLCO1B1/pravastatin": {
       "n_individuals": 500,
@@ -14,12 +14,12 @@
         "IM": 84,
         "PM": 3
       },
-      "population_cmax_mg_per_L_mean": 0.0350264983250667,
-      "population_auc_mg_h_per_L_mean": 0.13695619306854895,
-      "aafe_cmax": 2.1412360237656496,
-      "aafe_auc": 1.8254012060255695,
-      "pm_em_auc_ratio": 3.573799827415433,
-      "pm_em_cmax_ratio": 2.578883203024342,
+      "population_cmax_mg_per_L_mean": 0.03482121010496012,
+      "population_auc_mg_h_per_L_mean": 0.1355293425001509,
+      "aafe_cmax": 2.153859666965353,
+      "aafe_auc": 1.844618998278706,
+      "pm_em_auc_ratio": 1.7193317156691637,
+      "pm_em_cmax_ratio": 1.551120056743188,
       "criteria": {
         "population_aafe_max": 2.0,
         "pm_em_auc_ratio_min": 1.4,
@@ -28,10 +28,10 @@
       },
       "criterion_results": {
         "population_aafe_auc_pass": true,
-        "pm_em_auc_ratio_in_band": false,
+        "pm_em_auc_ratio_in_band": true,
         "pm_em_cmax_ratio_meets_min": true
       },
-      "overall_pass": false,
+      "overall_pass": true,
       "reference": {
         "drug": "pravastatin",
         "dose_mg": 40.0,
