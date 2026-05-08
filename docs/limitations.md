@@ -102,19 +102,46 @@ To make the scope unambiguous:
 
 -----
 
-## 9. v0.1.0 PK propagation is limited to OATP1B1-mediated substrates
+## 9. v0.1.0 PK propagation was limited to OATP1B1-mediated substrates — root cause re-attributed and partially mitigated post-Sisyphus PR #32 (v0.3.2)
 
-**Discovered:** 2026-04-29 (commit *to be filled at commit time*).
+**Discovered:** 2026-04-29 (commit `133ab1f`). **Root cause re-attributed:** 2026-05-08 after Sisyphus PR #32 merge — the originally-reported mechanism was incomplete.
 
-The body-graph enzyme-and-transporter abundance scaling that GenoADME drives via Sisyphus's `apply_phenotype_to_graph` propagates to predicted PK only along Sisyphus's Extended Clearance Model (ECM) pathway, which in v0.1.0 covers OATP1B1-mediated hepatic uptake. Specifically:
+### 9.1 Original framing (v0.1.0)
 
-- **Generic CYP-cleared drugs**: Sisyphus's CLint comes from an XGBoost predictor on molecular descriptors. Scaling liver enzyme abundance does not change the predicted CLint and therefore does not change the predicted PK. Empirical: caffeine + CYP1A2 PM moved AUC by 8.5×10⁻¹⁰ (floating-point noise).
-- **Prodrugs not in Sisyphus's activation registry**: Without a registry entry, the active species is not produced in simulation. Genotype-driven scaling on the activating enzyme therefore has no path to influence active-species PK. The current registry covers BH4, GS-441524, tebipenem, R406 — none of GenoADME's originally-scoped prodrug pairs (clopidogrel, simvastatin, irinotecan→SN-38).
-- **Genes absent from `PHENOTYPE_SCALES` or from `reference_man.yaml`**: NAT2 and UGT1A1, both of which appear in the GenoADME deferred-pairs list, are not represented in Sisyphus's current physiology graph or activity-multiplier table.
+The body-graph enzyme-and-transporter abundance scaling that GenoADME drove via Sisyphus's `apply_phenotype_to_graph` propagated to predicted PK only along Sisyphus's Extended Clearance Model (ECM) pathway. The v0.1.0 explanation attributed the non-propagation across non-ECM paths to:
 
-This is why v0.1.0 reduces the validation scope to a single pair (SLCO1B1/pravastatin) — the only pair for which the full eQTL-→categorical-→graph-scaling-→PK chain can be exercised against the holdout under the pinned Sisyphus build. The original five-pair scope is preserved as a Deferred roadmap in [`docs/validation-tiers.md`](validation-tiers.md), each pair annotated with the specific Sisyphus blocker.
+- **Generic CYP-cleared drugs:** Sisyphus's CLint comes from an XGBoost predictor on molecular descriptors. Scaling liver enzyme abundance does not change the predicted CLint and therefore does not change the predicted PK. Empirical: caffeine + CYP1A2 PM moved AUC by 8.5×10⁻¹⁰ (floating-point noise).
+- **Prodrugs not in Sisyphus's activation registry:** Without a registry entry, the active species is not produced in simulation. Genotype-driven scaling on the activating enzyme therefore has no path to influence active-species PK.
+- **Genes absent from `PHENOTYPE_SCALES` or from `reference_man.yaml`:** NAT2 and UGT1A1, both of which appear in the GenoADME deferred-pairs list, were not represented in Sisyphus's physiology graph or activity-multiplier table at v0.1.0.
 
-The implication for users: phenotype-conditional predictions from `genoadme.predict_pk(genotype=...)` are reliable only where the underlying Sisyphus pipeline has a propagation path. For drugs outside the supported set, the prediction reduces silently to the average-patient case. This is a real foot-gun and is the reason the v0.1.0 wrapper is intentionally narrow.
+This explanation was **partially correct**. The XGBoost-CLint argument applies to generic CYP-cleared drugs that go through `_decompose_clint` on a path that reads molecular descriptors but not enzyme abundance — that part stands.
+
+### 9.2 What v0.1.0 missed (Sisyphus PR #32 root-cause comment, 2026-05-08)
+
+Sisyphus PR #32 (`feat/nat2-ugt1a1-phenotype`, v0.3.2, merged 2026-05-06) ships **a back-solve cancellation fix** that was, in the v0.1.0 / v0.2 codebase, silently nullifying CYP/UGT/NAT phenotype effects — producing ratio = 1.000 *exactly* on EM/IM/PM individuals across non-transporter paths. Per the Sisyphus #31 acknowledgment comment:
+
+> SLCO1B1 was the only working phenotype path because OATP1B1 uses saturable Michaelis-Menten kinetics, not affinity back-solve. The 4.482 AUC ratio you measured for `pravastatin` SLCO1B1 PM was, accordingly, the only phenotype channel actually doing work pre-#32.
+
+So the caffeine + CYP1A2 PM = 8.5×10⁻¹⁰ floating-point-noise observation was *consistent with* the XGBoost-CLint hypothesis, but the *primary* failure mechanism for *all non-transporter phenotype paths* — including any path that *would* have read enzyme abundance — was the back-solve cancellation, not the XGBoost pathway choice. The XGBoost-CLint argument was over-attributed; it was the back-solve fix that re-enables the channel.
+
+### 9.3 Post-PR-#32 status (current as of v0.3 closing)
+
+After Sisyphus pin bump to `bf764c5` (PR #33 merge, includes PR #32):
+
+- **NAT2 + UGT1A1:** added to `PHENOTYPE_SCALES` and `reference_man.yaml`. The "genes absent from physiology" subset of v0.1.0 §9 is **resolved**.
+- **Back-solve cancellation:** fixed. Non-transporter phenotype paths now propagate effects through to PK rather than producing artifactual ratio = 1.000.
+- **Generic CYP-cleared drugs (e.g., warfarin/CYP2C9):** the XGBoost-CLint pathway question stands as a separate concern. Whether the enzyme-abundance signal can now influence CLint via the post-PR-#32 path requires a fresh empirical check (deferred to v0.4 work on the CYP2C9/warfarin Deferred pair).
+- **Prodrug routing (clopidogrel, simvastatin acid, irinotecan→SN-38):** still pending Sisyphus's prodrug-activation-registry expansion (Sisyphus #11). Independent of PR #32.
+
+### 9.4 v0.4 acceleration
+
+The v0.4 milestone (Activate Deferred pairs) is partially **un**blocked by PR #32:
+
+- NAT2/isoniazid: physiology-side prerequisites resolved; remaining work is GenoADME-side data (NAT2 marker variant calls, holdout integration). Could be picked up in v0.4 without further Sisyphus changes.
+- UGT1A1/irinotecan: physiology-side resolved for UGT1A1 phenotype scaling. The irinotecan → SN-38 prodrug routing is still gated on Sisyphus #11.
+- CYP2C19/clopidogrel, CYP2C9/warfarin: still gated on Sisyphus #11 (prodrug registry) and a fresh empirical check of the CLint pathway.
+
+The v0.1.0 user-foot-gun warning ("phenotype-conditional predictions are reliable only where Sisyphus has a propagation path") still applies but the supported set has expanded materially.
 
 -----
 
