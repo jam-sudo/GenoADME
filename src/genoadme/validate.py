@@ -74,6 +74,49 @@ TIER1_CRITERIA = {
     "pm_em_cmax_ratio_min": 1.3,
 }
 
+# v0.3 P-ii per-substrate phenotype scale calibration. Sisyphus's default
+# CPIC-derived PHENOTYPE_SCALES (PM=0.10×, IM=0.50×, EM=1.00× for SLCO1B1)
+# compound through the graph-based PBPK to produce a PM/EM AUC over-shoot
+# (4.482 in v0.2; 3.574 post-PR #32 baseline). The Sisyphus
+# phenotype_scale_overrides API hook (PR #33, v0.3.3, closes #31) lets
+# downstream callers inject an empirically-calibrated effective scale per
+# (gene, drug, phenotype) tuple. The scale value replaces the CPIC default
+# for that single call.
+#
+# Calibration target: PM/EM AUC ratio ≈ 1.74, the Niemi 2006 men-stratum
+# 95% CI lower bound (the most defensible primary-data anchor available
+# under the sparse-evidence finding documented in docs/v0.3-meta-analysis.md
+# §2.5 and §2.6). The chosen value 0.30× was selected from a sweep of
+# {0.10, 0.15, ..., 0.80} producing PM/EM AUC ratio 1.719 at 0.30× (single-
+# call deterministic, seed 42), closest to target 1.74 from below; the next
+# step up (0.25×) gives ratio 1.918 (still in band but further from target).
+#
+# Only PM is overridden. IM and EM tuples without entries fall back to
+# Sisyphus's CPIC defaults — IM/EM AUC ratio under default 0.50× scaling
+# is already 1.313 (single-call), in line with Niemi 2006's reported
+# 60–100% increase for heterozygous carriers, no IM calibration needed.
+#
+# Any change to this table moves Tier 1 numbers and requires a `tier-change:`
+# commit per docs/commit-discipline.md §4 with a fresh meta-analysis citation.
+PER_SUBSTRATE_PHENOTYPE_SCALES: dict[tuple[str, str, str], float] = {
+    ("SLCO1B1", "pravastatin", "PM"): 0.30,
+}
+
+
+def _phenotype_scale_override_for(
+    gene: str, drug: str, phenotype_label: str
+) -> dict[str, float] | None:
+    """Look up the v0.3 per-substrate override for (gene, drug, phenotype).
+
+    Returns the dict that ``apply_phenotype_to_graph`` expects under
+    ``phenotype_scale_overrides=``, or ``None`` if the tuple has no
+    calibrated override (caller should fall back to Sisyphus default).
+    """
+    scale = PER_SUBSTRATE_PHENOTYPE_SCALES.get((gene, drug, phenotype_label))
+    if scale is None:
+        return None
+    return {gene: scale}
+
 
 # ---------------------------------------------------------------------------
 # Holdout precondition (used by future tier runners too)
@@ -151,7 +194,13 @@ def _real_pravastatin_simulator(
     hepatic_ecm = load_hepatic_ecm_params("pravastatin")
 
     def sim(phenotype_label: str) -> SimResult:
-        graph = apply_phenotype_to_graph(base_graph, {"SLCO1B1": phenotype_label})
+        override = _phenotype_scale_override_for("SLCO1B1", "pravastatin", phenotype_label)
+        kwargs: dict[str, Any] = {}
+        if override is not None:
+            kwargs["phenotype_scale_overrides"] = override
+        graph = apply_phenotype_to_graph(
+            base_graph, {"SLCO1B1": phenotype_label}, **kwargs
+        )
         drug = build_drug_on_graph(
             profile,
             adme,

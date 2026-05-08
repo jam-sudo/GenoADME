@@ -15,8 +15,10 @@ import pytest
 from genoadme import audit as audit_mod
 from genoadme.errors import HoldoutNotGeneratedError
 from genoadme.validate import (
+    PER_SUBSTRATE_PHENOTYPE_SCALES,
     SimResult,
     _aggregate,
+    _phenotype_scale_override_for,
     _require_holdout,
     run_all,
     run_tier1,
@@ -213,6 +215,43 @@ def test_run_tier2_announces_empty_v01() -> None:
     out = run_tier2()
     assert out["n_pairs"] == 0
     assert "Deferred" in out["note"]
+
+
+# ---------------------------------------------------------------------------
+# v0.3 P-ii per-substrate phenotype scale calibration
+# ---------------------------------------------------------------------------
+
+
+def test_per_substrate_phenotype_scales_pravastatin_pm_calibrated() -> None:
+    """The v0.3 P-ii calibration value 0.30 is locked in code.
+
+    Any change to this value requires a `tier-change:` commit with a
+    fresh meta-analysis citation per docs/commit-discipline.md §4.
+    The current value comes from docs/v0.3-meta-analysis.md §2.8 sweep.
+    """
+    assert PER_SUBSTRATE_PHENOTYPE_SCALES[("SLCO1B1", "pravastatin", "PM")] == 0.30
+
+
+def test_phenotype_scale_override_applies_only_to_pm() -> None:
+    """The override is applied to PM only — EM and IM use Sisyphus defaults.
+
+    This semantics is required because Sisyphus's
+    `phenotype_scale_overrides={gene: scale}` is a flat replacement of the
+    *active* scale: passing 0.30 to EM (CPIC default 1.00) would
+    incorrectly reduce EM's OATP1B1 abundance to 0.30. See §2.8.
+    """
+    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "PM") == {
+        "SLCO1B1": 0.30
+    }
+    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "IM") is None
+    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "EM") is None
+
+
+def test_phenotype_scale_override_unknown_tuple_returns_none() -> None:
+    """Tuples not in the calibration table fall back to Sisyphus defaults."""
+    assert _phenotype_scale_override_for("CYP2C9", "warfarin", "PM") is None
+    assert _phenotype_scale_override_for("SLCO1B1", "rosuvastatin", "PM") is None
+    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "UM") is None
 
 
 def test_run_all_invokes_tier1_and_acks_tier2_3(
