@@ -64,6 +64,21 @@ The 1.67× Niemi/FDA Cmax gap is itself a documented limitation — neither anch
 
 The gating verdict (Population AAFE AUC ≤ 2.0, PM/EM AUC in [1.4, 2.5], PM/EM Cmax ≥ 1.3) is unchanged: PARTIAL with the failing criterion the PM/EM AUC ratio over-shoot.
 
+-----
+
+## Superseded
+
+This report is superseded by [`reports/validation-tier1-20260508.md`](validation-tier1-20260508.md). The Sisyphus pin used here (`9f1680d`) was bumped to `bf764c5` (v0.3.3 / PR #33 merge) in GenoADME commit `90a2f0a`. The 2026-05-08 baseline (no override) produces:
+
+|Metric                       |Superseded (this report) |New baseline (2026-05-08, no override) |
+|-----------------------------|-------------------------|----------------------------------------|
+|Population AAFE (AUC)        |1.152 (PASS)             |1.825 (PASS, tighter margin)            |
+|PM/EM AUC ratio              |4.482 (FAIL)             |3.574 (FAIL, moved 20% toward band)     |
+|PM/EM Cmax ratio             |2.639 (PASS)             |2.579 (PASS)                            |
+|Overall                      |PARTIAL                  |PARTIAL                                 |
+
+The verdict is unchanged. The PM/EM AUC ratio over-shoot is *less pronounced* under PR #32's back-solve cancellation fix — the prior 4.482 was inflated by non-transporter phenotype paths producing artifactual ratio = 1.000 on EM/IM/PM individuals. The residual gap (3.574 vs band [2.5] upper) is what the v0.3 `phenotype_scale_overrides` calibration commit will close.
+
 ## Audit notes
 
 - Cherry-picking audit log: `reports/audit-log.jsonl` line for `purpose="tier 1 validation"` with this git SHA (timestamp `2026-05-03T22:36:45Z`).
