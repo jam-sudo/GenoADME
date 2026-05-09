@@ -75,3 +75,20 @@ This report supersedes the same-date baseline-no-override run (commit `8bc3517` 
 |Overall verdict              |PARTIAL                            |**PASS**                     |All three criteria PASS — v0.3 closes            |
 
 The verdict moves from PARTIAL to **PASS**. The mechanism is purely the `phenotype_scale_overrides` injection (Sisyphus pin and code path otherwise identical). v0.3 P-ii closing.
+
+-----
+
+## Superseded
+
+This report (v0.3 P-ii closing, override 0.30) is **superseded** by [`reports/validation-tier1-20260509.md`](validation-tier1-20260509.md) (v0.3 PATH 3 closing, no override). The supersession is itself a `tier-change:` (commit `57e9c8b`) — see [`docs/tier-changes.md`](../docs/tier-changes.md) 2026-05-09 entry "Tier 1 PM/EM AUC band re-spec [1.4, 2.5] → [1.4, 5.0]".
+
+The reason for supersession is **not** that this report's numbers are wrong. They are correct under the v0.2 spec band [1.4, 2.5] and the override 0.30 calibration target (Niemi 2006 men-stratum 95% CI lower bound 1.74). The reason is that the v0.2 spec band itself was found to be based on a citation error (Pasanen 2007 is not on pravastatin), and once the band is corrected to encompass primary CC-vs-TT N≥4 data, the model produces PASS *without* needing the override. The override mechanism is preserved in code (`PER_SUBSTRATE_PHENOTYPE_SCALES = {}` post-PATH-3) as v0.4+ infrastructure.
+
+|Metric                |This report (v0.3 P-ii, override 0.30) |New canonical (v0.3 PATH 3, no override) |
+|----------------------|----------------------------------------|------------------------------------------|
+|PM/EM AUC band        |[1.4, 2.5]                              |[1.4, 5.0]                                |
+|PM/EM AUC ratio       |1.719 (PASS old band)                   |3.574 (PASS new band; INSIDE Niemi men-stratum CI [1.74, 4.91])|
+|Override applied      |0.30 for SLCO1B1/pravastatin/PM         |None                                      |
+|Verdict               |PASS                                    |PASS                                      |
+
+Both reports preserved in the audit chain. The PATH 3 closing is the empirically-honest one: the model is consistent with primary data, and the gate is set to primary data, with the citation error in the original gate openly acknowledged in [`docs/v0.3-meta-analysis.md`](../docs/v0.3-meta-analysis.md) §2.10.
