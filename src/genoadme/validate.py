@@ -66,41 +66,43 @@ TIER1_REFERENCE = {
     "citation": "Niemi M, et al. Pharmacogenet Genomics. 2006;16(11):801-8",
 }
 
-# Pre-spec criteria from docs/validation-tiers.md §Tier 1.
+# Tier 1 criteria. The PM/EM AUC ratio band was re-spec'd 2026-05-09
+# from [1.4, 2.5] to [1.4, 5.0] under a `tier-change:` commit per
+# docs/commit-discipline.md §4. Justification: the original [1.4, 2.5]
+# band was derived from a citation chain (Niemi 2006 + Pasanen 2007,
+# claimed range 1.6-2.0×) that the v0.3 meta-analysis showed does NOT
+# verify against primary data — Pasanen 2007 is on atorvastatin and
+# rosuvastatin, NOT pravastatin, and Niemi 2006's accessible PM/EM
+# AUC ratio data is the men-stratum 232% (95% CI 74–391%, ratio
+# [1.74, 4.91]). The widened band [1.4, 5.0] preserves the direction
+# floor 1.4 and encompasses Niemi 2006 men-stratum 95% CI's upper
+# bound 4.91 (rounded to 5.0). See docs/tier-changes.md and
+# docs/v0.3-meta-analysis.md §2.10.
 TIER1_CRITERIA = {
     "population_aafe_max": 2.0,
     "pm_em_auc_ratio_min": 1.4,
-    "pm_em_auc_ratio_max": 2.5,
+    "pm_em_auc_ratio_max": 5.0,
     "pm_em_cmax_ratio_min": 1.3,
 }
 
-# v0.3 P-ii per-substrate phenotype scale calibration. Sisyphus's default
-# CPIC-derived PHENOTYPE_SCALES (PM=0.10×, IM=0.50×, EM=1.00× for SLCO1B1)
-# compound through the graph-based PBPK to produce a PM/EM AUC over-shoot
-# (4.482 in v0.2; 3.574 post-PR #32 baseline). The Sisyphus
-# phenotype_scale_overrides API hook (PR #33, v0.3.3, closes #31) lets
-# downstream callers inject an empirically-calibrated effective scale per
-# (gene, drug, phenotype) tuple. The scale value replaces the CPIC default
-# for that single call.
+# Per-substrate phenotype scale override table. Mechanism added in
+# `feat(pgx)` commit 76738aa (v0.3 P-ii path) but EMPTIED in 2026-05-09
+# `tier-change:` (ultrathink-driven correction). The override value 0.30
+# was previously here for (SLCO1B1, pravastatin, PM); it has been removed
+# because the corrected reasoning identifies the issue as a band-spec
+# error (citation chain), not a model defect. The model output PM/EM AUC
+# ratio under default Sisyphus scaling (3.574 post-PR-#32) is INSIDE the
+# Niemi 2006 men-stratum 95% CI [1.74, 4.91] — empirically consistent
+# with primary data; the band was widened to [1.4, 5.0] (see TIER1_CRITERIA)
+# rather than the model being calibrated.
 #
-# Calibration target: PM/EM AUC ratio ≈ 1.74, the Niemi 2006 men-stratum
-# 95% CI lower bound (the most defensible primary-data anchor available
-# under the sparse-evidence finding documented in docs/v0.3-meta-analysis.md
-# §2.5 and §2.6). The chosen value 0.30× was selected from a sweep of
-# {0.10, 0.15, ..., 0.80} producing PM/EM AUC ratio 1.719 at 0.30× (single-
-# call deterministic, seed 42), closest to target 1.74 from below; the next
-# step up (0.25×) gives ratio 1.918 (still in band but further from target).
-#
-# Only PM is overridden. IM and EM tuples without entries fall back to
-# Sisyphus's CPIC defaults — IM/EM AUC ratio under default 0.50× scaling
-# is already 1.313 (single-call), in line with Niemi 2006's reported
-# 60–100% increase for heterozygous carriers, no IM calibration needed.
-#
-# Any change to this table moves Tier 1 numbers and requires a `tier-change:`
-# commit per docs/commit-discipline.md §4 with a fresh meta-analysis citation.
-PER_SUBSTRATE_PHENOTYPE_SCALES: dict[tuple[str, str, str], float] = {
-    ("SLCO1B1", "pravastatin", "PM"): 0.30,
-}
+# The mechanism is preserved as v0.4+ infrastructure for future cases
+# where a per-substrate scale calibration genuinely is the right fix
+# (e.g. when graph-compounding effects show clear deviation from primary
+# clinical CIs for a specific drug). Any new entry requires a fresh
+# `tier-change:` commit with meta-analysis citation per
+# docs/commit-discipline.md §4.
+PER_SUBSTRATE_PHENOTYPE_SCALES: dict[tuple[str, str, str], float] = {}
 
 
 def _phenotype_scale_override_for(

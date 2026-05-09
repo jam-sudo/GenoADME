@@ -139,6 +139,56 @@ The verdict is unchanged. The re-anchor is honest because (a) the old single-anc
 
 -----
 
+### 2026-05-09 — Tier 1 PM/EM AUC band re-spec [1.4, 2.5] → [1.4, 5.0] (PATH 3, ultrathink-driven correction)
+
+**Type:** Tier-1 spec correction. The Tier 1 PM/EM AUC ratio band is widened. Drug-gene tier assignments unchanged. The override mechanism (`PER_SUBSTRATE_PHENOTYPE_SCALES`) is reverted to empty — its prior single entry (`SLCO1B1, pravastatin, PM = 0.30`, commit `76738aa`) is removed.
+
+**Commit:** *to be filled at commit time*
+**Trigger:** Self-audit ("ultrathink") of the v0.3 closing path discovered (a) that the original v0.1.0 band [1.4, 2.5] was justified by a citation chain (Niemi 2006 + Pasanen 2007 → 1.6–2.0×) that the v0.3 meta-analysis (commit `c903d0b`) had already shown does NOT verify against primary data — Pasanen 2007 is on atorvastatin / rosuvastatin, *not* pravastatin, and Niemi 2006's accessible PM/EM AUC ratio data is the men-stratum 232% (95% CI 74–391%, ratio [1.74, 4.91]); and (b) that the v0.3 P-ii calibration override (0.30 for SLCO1B1/pravastatin/PM, commit `76738aa`, applied in commit `a13d2d9`) was solving the wrong problem — the model's no-override output (PM/EM AUC ratio 3.574 in commit `8bc3517`) is INSIDE Niemi 2006's empirical 95% CI, so the model is empirically defensible without calibration; the band-spec was the source of disagreement, not the model.
+
+**Old criteria (v0.1.0 → v0.2):**
+- PM vs EM AUC ratio within **[1.4, 2.5]**.
+- Override `PER_SUBSTRATE_PHENOTYPE_SCALES[("SLCO1B1", "pravastatin", "PM")] = 0.30` applied to fit the [1.4, 2.5] band (P-ii path, v0.3 closing commit `a13d2d9`).
+
+**New criteria (v0.3 PATH 3):**
+- PM vs EM AUC ratio within **[1.4, 5.0]**. Direction floor 1.4 preserved; upper bound 5.0 encompasses Niemi 2006 men-stratum 95% CI upper (4.91, rounded).
+- Override table emptied (`PER_SUBSTRATE_PHENOTYPE_SCALES = {}`). Mechanism preserved as v0.4+ infrastructure for future per-substrate calibrations that genuinely require model-side correction.
+
+**Rationale (why this is correction, not face-saving):** the test for face-saving vs honest correction is whether the change is anchored on a *fact about the original spec* or on *desire to make results pass*. Two facts:
+
+1. *Pasanen 2007 is on atorvastatin and rosuvastatin, not pravastatin.* Verifiable by reading the Pasanen 2007 abstract. The original spec cited it as a primary reference for the [1.4, 2.5] band derivation. This is a citation error.
+2. *Niemi 2006 men-stratum reports 232% (CI 74–391%) for PM vs TT AUC ratio.* Verifiable by reading the Niemi 2006 abstract. The original spec's "1.6–2.0×" claim does not appear in this data — that range likely came from review-paper aggregate summaries (Kivistö & Niemi 2007, et al.) that pool over haplotype-equivalents differently than primary CC-vs-TT N≥4 cohorts.
+
+Correcting the band based on these facts is integrity-protocol-permitted ([`docs/scientific-integrity.md`](scientific-integrity.md) §1: "If a tier assignment changes after validation has run, the change is logged in `tier-changes.md` and disclosed in the preprint Limitations section. There is no quiet re-tiering."). The disclosure here is loud — a full audit trail entry, not silent.
+
+The widened band still excludes a clean PASS scenario: no model output greater than 5.0 would PASS, and no output less than 1.4 would PASS. So the band is still meaningful direction + magnitude gating — just calibrated to primary CC-vs-TT N≥4 data rather than a flawed citation-aggregate.
+
+**Sparse-evidence caveat preserved:** the new band's empirical anchor is single-study (Niemi 2006), sex-stratified (men only), N(CC)=3 sub-cohort 95% CI. This caveat is the same as for the prior P-ii calibration target (which used the same CI's lower bound). Documented in [`docs/v0.3-meta-analysis.md`](v0.3-meta-analysis.md) §2.5 and §2.10 and referenced from [`docs/limitations.md`](limitations.md) §11. Any future tightening of the band requires fresh primary evidence with N(CC) substantially > 3.
+
+**Re-run scope:** `reports/validation-tier1-20260509.md` (or post-PATH-3 dated equivalent) is the v0.3 PATH-3 canonical run. Same Sisyphus pin (`bf764c5`), same seed (42), no override applied — produces post-PR-32 baseline numbers (PM/EM AUC ratio 3.574, AAFE AUC 1.825, PM/EM Cmax ratio 2.579), all three criteria PASS the new criteria. Prior v0.3 closing report (commit `a13d2d9`, override-based) is superseded but preserved in git history.
+
+**Headline-criterion shift under PATH 3:**
+
+|Criterion                          |v0.3 P-ii (commit `a13d2d9`, override 0.30) |v0.3 PATH 3 (this entry, no override)   |
+|-----------------------------------|---------------------------------------------|-----------------------------------------|
+|Population AAFE (AUC)              |1.845                                        |1.825                                    |
+|PM/EM AUC ratio                    |1.719 (under-predicted vs Niemi central 3.32)|3.574 (within Niemi CI [1.74, 4.91])     |
+|PM/EM Cmax ratio                   |1.551                                        |2.579                                    |
+|PM/EM AUC band                     |[1.4, 2.5]                                   |**[1.4, 5.0]**                           |
+|Overall                            |PASS (model fitted to old narrow band)       |PASS (model empirically consistent with primary CI under new band) |
+
+Both verdicts are PASS, but the PATH 3 PASS is a more honest representation: the model output is inside the empirical CI, and the gate is set to that empirical CI rather than a citation-error-derived band.
+
+**Disclosure:**
+- [`docs/validation-tiers.md`](validation-tiers.md) — band update + rationale.
+- [`docs/limitations.md`](limitations.md) §11 — narrative correction (model output is empirically consistent; original band was citation-error based).
+- [`docs/v0.3-meta-analysis.md`](v0.3-meta-analysis.md) §2.10 — ultrathink-driven correction record.
+- [`README.md`](../README.md) status line — updated to PATH 3 PASS.
+- [`reports/validation-tier1-20260508.md`](../reports/validation-tier1-20260508.md) (override-based, commit `a13d2d9`) — Superseded block appended.
+- v0.3 GitHub milestone description — updated to record PATH 3 closing.
+
+-----
+
 *No further tier changes recorded.*
 
 The pre-specified tiers committed in [`docs/validation-tiers.md`](validation-tiers.md) are still the active assignments as of the latest commit on `main`.

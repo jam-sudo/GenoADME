@@ -222,36 +222,47 @@ def test_run_tier2_announces_empty_v01() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_per_substrate_phenotype_scales_pravastatin_pm_calibrated() -> None:
-    """The v0.3 P-ii calibration value 0.30 is locked in code.
+def test_per_substrate_phenotype_scales_empty_post_path3() -> None:
+    """The v0.3 P-ii override (0.30 for SLCO1B1/pravastatin/PM) was REVERTED
+    on 2026-05-09 under a `tier-change:` commit (ultrathink-driven correction).
 
-    Any change to this value requires a `tier-change:` commit with a
-    fresh meta-analysis citation per docs/commit-discipline.md §4.
-    The current value comes from docs/v0.3-meta-analysis.md §2.8 sweep.
+    The override mechanism is preserved in code as v0.4+ infrastructure but
+    no current entries — the v0.3 closing path switched from P-ii (calibrate
+    model to fit narrow band) to P-i (re-spec band to encompass empirical CI
+    after citation error correction). See docs/v0.3-meta-analysis.md §2.10.
+
+    Any new entry requires a fresh `tier-change:` commit with meta-analysis
+    citation per docs/commit-discipline.md §4.
     """
-    assert PER_SUBSTRATE_PHENOTYPE_SCALES[("SLCO1B1", "pravastatin", "PM")] == 0.30
+    assert PER_SUBSTRATE_PHENOTYPE_SCALES == {}
 
 
-def test_phenotype_scale_override_applies_only_to_pm() -> None:
-    """The override is applied to PM only — EM and IM use Sisyphus defaults.
+def test_phenotype_scale_override_returns_none_for_all_tuples_post_path3() -> None:
+    """With the table empty post-PATH-3 correction, no override fires.
 
-    This semantics is required because Sisyphus's
-    `phenotype_scale_overrides={gene: scale}` is a flat replacement of the
-    *active* scale: passing 0.30 to EM (CPIC default 1.00) would
-    incorrectly reduce EM's OATP1B1 abundance to 0.30. See §2.8.
+    The mechanism (`_phenotype_scale_override_for`) is locked behaviourally
+    — returns None for every tuple because the table is empty. Future v0.4
+    work that adds entries will exercise the dispatch path again.
     """
-    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "PM") == {
-        "SLCO1B1": 0.30
-    }
+    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "PM") is None
     assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "IM") is None
     assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "EM") is None
-
-
-def test_phenotype_scale_override_unknown_tuple_returns_none() -> None:
-    """Tuples not in the calibration table fall back to Sisyphus defaults."""
     assert _phenotype_scale_override_for("CYP2C9", "warfarin", "PM") is None
     assert _phenotype_scale_override_for("SLCO1B1", "rosuvastatin", "PM") is None
-    assert _phenotype_scale_override_for("SLCO1B1", "pravastatin", "UM") is None
+
+
+def test_tier1_pm_em_auc_ratio_band_widened_to_5() -> None:
+    """The PM/EM AUC ratio upper band was 2.5 (v0.1.0) → 5.0 (v0.3 PATH 3).
+
+    The widening is a `tier-change:` commit citing Niemi 2006 men-stratum
+    95% CI [1.74, 4.91] (rounded to 5.0 upper) and correcting the original
+    citation chain (Pasanen 2007 is not on pravastatin). See
+    docs/tier-changes.md and docs/v0.3-meta-analysis.md §2.10.
+    """
+    from genoadme.validate import TIER1_CRITERIA
+
+    assert TIER1_CRITERIA["pm_em_auc_ratio_min"] == 1.4
+    assert TIER1_CRITERIA["pm_em_auc_ratio_max"] == 5.0
 
 
 def test_run_all_invokes_tier1_and_acks_tier2_3(

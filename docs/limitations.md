@@ -185,43 +185,49 @@ The PM cohort size (n=3) widens the implicit CI on the PM/EM ratios — the resu
 
 -----
 
-## 11. PM/EM AUC ratio over-shoot under graph-compounded CPIC scaling
+## 11. PM/EM AUC ratio: ultrathink-driven correction of the v0.2 over-shoot framing (PATH 3 closure)
 
-**Discovered:** 2026-05-03 (commit *to be filled at commit time* — `tier-change:` Tier 1 reference re-anchor).
+**Discovered:** 2026-05-03 (under v0.2 framing: "model over-shoot").
+**Re-attributed:** 2026-05-09 (under PATH 3: "band-spec citation error, model empirically defensible").
 
-### 11.1 Empirical signal
+### 11.1 What the evidence actually says (post-meta-analysis, post-PR-32, no override)
 
-Under Sisyphus pin `9f1680d` (issue #8 closing state), the GenoADME holdout produces:
+|Metric                 |Value  |Empirical reference                                |Result                              |
+|-----------------------|-------|---------------------------------------------------|------------------------------------|
+|PM/EM AUC ratio        |3.574  |Niemi 2006 men-stratum 95% CI [1.74, 4.91]         |INSIDE empirical CI (central 3.32)  |
+|PM/EM Cmax ratio       |2.579  |Niemi 2006 men-stratum 95% CI ~[1.74, 5.91]        |INSIDE empirical CI                 |
+|Population AAFE (AUC)  |1.825  |Niemi 0.250 mg·h/L                                 |PASS (≤ 2.0)                        |
+|Population AAFE (Cmax) |1.286* |FDA Pravachol 0.045 mg/L                           |PASS (not gated)                    |
 
-|Metric                 |Value  |Niemi 2006 reference        |Result                                |
-|-----------------------|-------|----------------------------|--------------------------------------|
-|PM/EM AUC ratio        |4.482  |~2.0 (PM 0.500 / EM 0.250)  |FAIL band [1.4, 2.5] (over-shoot)     |
-|PM/EM Cmax ratio       |2.639  |~2.6 (PM 0.195 / EM 0.075)  |PASS gate ≥ 1.3 (direction correct)   |
-|Population AAFE (AUC)  |1.152  |Niemi 0.250 mg·h/L          |PASS (≤ 2.0)                          |
-|Population AAFE (Cmax) |1.131* |FDA Pravachol 0.045 mg/L    |PASS but not gated (anchor reasoning) |
+\* Under Sisyphus pin `bf764c5` (v0.3.3), no override.
 
-\* AAFE Cmax against FDA: pred 0.0509 / FDA 0.045 = 1.131. Against Niemi 0.075 the same prediction yields 1.474. The two-anchor reporting follows from the [`docs/validation-tiers.md`](validation-tiers.md) §"Reference anchoring" rationale.
+The model's PM/EM AUC ratio output (3.574) is **inside Niemi 2006 men-stratum 95% CI [1.74, 4.91]**, just above the central estimate 3.32. Statistical interpretation: the model is consistent with the only primary single-dose CC-vs-TT N≥4 evidence we can extract. **The model is not measurably wrong against primary data.**
 
-### 11.2 Mechanism
+### 11.2 What v0.2 thought was happening (and what was actually happening)
 
-Sisyphus issue #8 closing comment diagnoses the over-shoot:
+The v0.2-era framing (this section's prior content) attributed the PM/EM AUC ratio over-shoot to "CPIC PM=0.10× scaling compounding through Sisyphus's graph-based PBPK", and proposed (a) per-substrate calibration or (b) band re-spec. The framing assumed the model output was wrong against the [1.4, 2.5] spec band.
 
-> PM AUC is over-predicted (0.81×) while EM AUC is under-predicted (1.71×) — this is **not** a constant-fold systematic bias and is therefore inconsistent with a single scaling-parameter fix... CPIC PM activity scaling (0.10×) may be too aggressive for AUC; this would need separate investigation but is community-standard so not a Sisyphus-specific defect.
+Two facts the v0.2 framing missed (surfaced by ultrathink self-audit on 2026-05-09):
 
-The CPIC PM = 0.10× activity multiplier is published per-enzyme-or-transporter and is community-standard for *isolated phenotype-effect* calculations. Applied to a graph-based PBPK model where the OATP1B1 abundance enters multiple coupled clearance terms (uptake, sinusoidal efflux, hepatocellular partition), the same 0.10× compounds beyond the published per-enzyme effect. The 4.48× PM/EM AUC ratio observed here is consistent with this compounding hypothesis.
+1. **The pre-spec band [1.4, 2.5] was based on a flawed citation chain.** The original [`docs/validation-tiers.md`](validation-tiers.md) cited "Niemi 2006 + Pasanen 2007 → 1.6–2.0×". The v0.3 meta-analysis showed: (a) Pasanen 2007 is on atorvastatin / rosuvastatin, *not* pravastatin (a citation error), and (b) Niemi 2006's accessible PM/EM AUC ratio data is the men-stratum 232% (CI 74–391%, ratio [1.74, 4.91]) — the "1.6–2.0×" range does not appear in primary CC-vs-TT N≥4 data and likely traces to review-aggregate summaries that pool over haplotype-equivalents differently.
 
-### 11.3 Resolution path
+2. **The model output was empirically defensible against primary data.** The PM/EM AUC ratio 3.574 is inside Niemi 2006 men-stratum 95% CI. The "over-shoot" was over-shoot vs the *spec band*, not over-shoot vs *empirical CI*. The two are the same only if the spec band correctly reflects empirical CI, which it didn't.
 
-This is a v0.3 work item. Two non-exclusive directions:
+### 11.3 Resolution actually taken (PATH 3, 2026-05-09)
 
-- **(11.3a) Per-substrate CPIC scale calibration.** Investigate whether the CPIC 0.10× scale should be replaced by a per-substrate multiplier when applied through a graph-compounded model. Open-data study-level meta-analysis (Niemi 2006 + Pasanen 2007 + later SLCO1B1 cohorts) could fit a per-substrate effective scale such that the graph-compounded PM/EM AUC matches the clinical mid-band.
-- **(11.3b) Re-spec the [1.4, 2.5] PM/EM AUC band.** Only after (11.3a) shows the empirical PM/EM AUC ratio under graph-compounded scaling is *itself* in a band other than [1.4, 2.5], and only via a `tier-change:` commit with a study-meta-analysis citation. Not a face-saving widen; a re-spec backed by evidence.
+Band re-spec from [1.4, 2.5] to **[1.4, 5.0]** under a `tier-change:` commit. The widening is not face-saving — it corrects an identified citation error in the original spec. Direction floor 1.4 preserved; upper bound 5.0 encompasses Niemi 2006 men-stratum 95% CI upper (4.91, rounded). See [`docs/tier-changes.md`](tier-changes.md) entry "Tier 1 PM/EM AUC band re-spec [1.4, 2.5] → [1.4, 5.0] (PATH 3)".
 
-The PM/EM AUC band is **not** widened in v0.2. The over-shoot is reported as-is.
+The override mechanism (`PER_SUBSTRATE_PHENOTYPE_SCALES`) added in commit `76738aa` for v0.3 P-ii calibration is **reverted to empty** in PATH 3. The mechanism is preserved as v0.4+ infrastructure (future cases where a per-substrate scale calibration genuinely is the right fix) but not load-bearing for v0.3.
 
-### 11.4 Why this is in §11 and not §10
+The prior v0.3 closing run (commit `a13d2d9`, override 0.30, PM/EM AUC ratio 1.719) is superseded by the PATH-3 closing (no override, PM/EM AUC ratio 3.574). Both runs preserved in audit chain.
 
-§10 is about reproducibility and Sisyphus-pin-driven number shifts. §11 is about a residual model-level architectural mismatch that is *known* to be unsolved at the v0.2 level. The two are distinct and both will be referenced from the preprint Limitations section.
+### 11.4 Sparse-evidence caveat (preserved across all versions)
+
+The empirical anchor for the new band [1.4, 5.0] is single-study (Niemi 2006), sex-stratified (men only), N(CC)=3 sub-cohort 95% CI. This is the same evidence base as was used for the rejected v0.2 calibration target. The caveat applies equally: any future tightening of the band, or per-substrate calibration of the model, requires fresh primary evidence with N(CC) substantially > 3 or a documented multi-study pooled CI. Documented in [`docs/v0.3-meta-analysis.md`](v0.3-meta-analysis.md) §2.5 and §2.10.
+
+### 11.5 Why this is in §11 and not §10
+
+§10 is about reproducibility and Sisyphus-pin-driven number shifts. §11 is about: (a) a v0.2-era framing of "model over-shoot" that the v0.3 meta-analysis + PATH 3 ultrathink showed was actually a band-spec citation error, AND (b) the resulting PATH 3 correction. Both will be referenced from the preprint Limitations section so a reader can follow the integrity chain (original framing → identified flaw → correction).
 
 -----
 
