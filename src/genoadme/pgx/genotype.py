@@ -309,6 +309,103 @@ def load_slco1b1_calls(
     ]
 
 
+_NAT2_MARKER_RSIDS: tuple[str, ...] = (
+    "rs1801279",
+    "rs1041983",
+    "rs1801280",
+    "rs1799930",
+    "rs1799931",
+)
+
+
+def load_nat2_calls(
+    tsv_path: str | Path,
+    holdout_id_path: str | Path | None = None,
+) -> list[Genotype]:
+    """Load NAT2 5-SNP phased calls from an 11-column TSV.
+
+    The TSV must have a header line with columns ``sample_id`` followed by
+    ten allele columns: for each NAT2 marker rsid, a pair
+    ``{rsid}_a`` and ``{rsid}_b`` holding the phased allele letters.
+
+    The five marker rsids are the minimum set for CPIC-standard SA/IA/RA
+    phenotype assignment per
+    ``docs/v0.4-nat2-isoniazid-protocol.md`` §1.2:
+
+    - ``rs1801279`` (191G>A) — *14A/B
+    - ``rs1041983`` (282C>T) — *6A linkage
+    - ``rs1801280`` (341T>C) — *5A/B/C
+    - ``rs1799930`` (590G>A) — *6A/B
+    - ``rs1799931`` (857G>A) — *7A/B
+
+    Args:
+        tsv_path: Path to the calls TSV. v0.4 default
+            ``data/genotype/nat2_snps_holdout.tsv``.
+        holdout_id_path: Optional. If provided, the result is restricted
+            to sample IDs in this holdout file.
+
+    Returns:
+        List of ``Genotype`` records, lex-sorted by ``sample_id``, each
+        with ``calls`` populated for all five NAT2 marker rsids.
+
+    Raises:
+        ValueError: If the TSV is malformed (missing required columns).
+        KeyError: If ``holdout_id_path`` references samples missing from
+            the TSV.
+    """
+    tsv_path = Path(tsv_path)
+    required_cols: list[str] = ["sample_id"]
+    for rsid in _NAT2_MARKER_RSIDS:
+        required_cols.append(f"{rsid}_a")
+        required_cols.append(f"{rsid}_b")
+
+    by_id: dict[str, dict[str, tuple[str, str]]] = {}
+    with tsv_path.open("r", encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+        cols = [h.strip() for h in header]
+        for r in required_cols:
+            if r not in cols:
+                raise ValueError(
+                    f"TSV {tsv_path} missing required column {r!r}; got {cols}"
+                )
+        col_idx = {c: cols.index(c) for c in required_cols}
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < len(cols):
+                continue
+            sid = parts[col_idx["sample_id"]].strip()
+            if not sid:
+                continue
+            calls: dict[str, tuple[str, str]] = {}
+            for rsid in _NAT2_MARKER_RSIDS:
+                a = parts[col_idx[f"{rsid}_a"]].strip()
+                b = parts[col_idx[f"{rsid}_b"]].strip()
+                calls[rsid] = (a, b)
+            by_id[sid] = calls
+
+    if holdout_id_path is not None:
+        wanted = load_holdout(holdout_id_path)
+        missing = [s for s in wanted if s not in by_id]
+        if missing:
+            raise KeyError(
+                f"{len(missing)} holdout sample(s) missing from {tsv_path}; "
+                f"first few: {missing[:5]}"
+            )
+        ids = sorted(wanted)
+    else:
+        ids = sorted(by_id.keys())
+
+    panel_lookup = _build_super_pop_lookup()
+    return [
+        Genotype(
+            sample_id=sid,
+            super_population=panel_lookup.get(sid),
+            calls=by_id[sid],
+        )
+        for sid in ids
+    ]
+
+
 def load_thousand_genomes_holdout(holdout_id_path: str | Path) -> list[Genotype]:
     """Load the 500-individual holdout subset as ``Genotype`` records.
 

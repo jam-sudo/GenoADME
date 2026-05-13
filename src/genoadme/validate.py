@@ -53,6 +53,38 @@ PRAVASTATIN_SMILES: str = (
 )
 PRAVASTATIN_DOSE_MG: float = 40.0  # standard clinical dose; cf. Niemi 2006 protocol
 
+# v0.4 NAT2/isoniazid Tier 1 promotion (Phase 3 infrastructure).
+# SMILES is isonicotinic acid hydrazide. Standard adult oral TB dose is
+# 300 mg; the Kinzig-Schippers 2005 primary inclusion was 100 mg PO.
+# The Tier 1 spec promotion + reference anchor decision happens in Phase 4
+# per docs/v0.4-nat2-isoniazid-protocol.md §2.6. This block is the
+# infrastructure plumbing only — no headline metric implication on its own.
+ISONIAZID_SMILES: str = "O=C(NN)c1ccncc1"
+ISONIAZID_DOSE_MG: float = 300.0  # standard adult clinical dose
+
+# Pre-staged Tier 1 criteria for NAT2/isoniazid per v0.4 protocol §2.5.
+# The band SA/RA AUC ratio [2.3, 3.7] is the D-B rule output from
+# Kinzig-Schippers 2005 single-study CI [2.57, 3.35] + margin 0.30
+# (floor). Population AAFE reference anchor TBD during Phase 3 implementation
+# wiring (candidates: extrapolated Kinzig-Schippers RA arm to 300 mg vs
+# Surarak 2024 aggregate). SA/RA Cmax floor 1.3 mirrors SLCO1B1.
+TIER1_NAT2_REFERENCE = {
+    "drug": "isoniazid",
+    "dose_mg": 300.0,
+    "population": "rapid-acetylator anchor; reference value TBD post-Phase-3",
+    "cmax_mg_per_L": None,    # placeholder — to be set when anchor is selected
+    "auc_mg_h_per_L": None,   # placeholder
+    "citation": "Kinzig-Schippers 2005 (primary); Surarak 2024 (supplementary aggregate)",
+}
+
+TIER1_NAT2_CRITERIA = {
+    "population_aafe_max": 2.0,
+    "sa_ra_auc_ratio_min": 2.3,
+    "sa_ra_auc_ratio_max": 3.7,
+    "sa_ra_cmax_ratio_min": 1.3,
+}
+
+
 # Published reference values for AAFE comparison.
 # Source: Niemi 2006 (control SLCO1B1 *1B/*1B carriers, pravastatin 40 mg PO).
 # These are EM/NM-population means; reported here as ``mg/L`` and
@@ -223,6 +255,82 @@ def _real_pravastatin_simulator(
         if not result.solver_success:
             raise RuntimeError(
                 f"ODE solver did not converge for SLCO1B1={phenotype_label}"
+            )
+        endpoints = compute_endpoints(result, observation_node="venous_blood")
+        return SimResult(
+            cmax_mg_per_L=float(endpoints.cmax.mean),
+            auc_mg_h_per_L=float(endpoints.auc_0t.mean),
+        )
+
+    return sim
+
+
+def _real_isoniazid_simulator(
+    dose_mg: float,
+    seed: int,
+) -> Simulator:
+    """Build the per-individual isoniazid simulator for NAT2-conditional PK.
+
+    Mirror of ``_real_pravastatin_simulator`` minus the OATP1B1 ECM machinery:
+    isoniazid is not an OATP substrate and clearance routes through hepatic
+    NAT2 acetylation, so no transporter kinetics / ECM kwargs are passed.
+    Phenotype scaling on NAT2 abundance propagates to CLint via Sisyphus
+    post-PR-#32 (the back-solve cancellation fix described in
+    docs/limitations.md §9).
+
+    The simulator accepts the Sisyphus-compatible phenotype label (``"PM"``,
+    ``"IM"``, or ``"EM"``) — NAT2 SA/IA/RA → PM/IM/EM mapping is in
+    ``genoadme.pgx.phenotype._NAT2_SLOW_COUNT_TO_LABEL``.
+    """
+    import numpy as np
+
+    import sisyphus  # for the bundled physiology YAML path
+    import sisyphus.engine.flux  # noqa: F401 — register flux specs
+    from sisyphus.engine.compiler import ODECompiler, ResolvedParams
+    from sisyphus.engine.solver import solve
+    from sisyphus.graph.builder import build_from_yaml
+    from sisyphus.pk.endpoints import compute_endpoints
+    from sisyphus.predict.adme import predict_adme
+    from sisyphus.predict.chemistry import compute_profile
+    from sisyphus.predict.ivive import build_drug_on_graph
+    from sisyphus.predict.phenotype import apply_phenotype_to_graph
+
+    sis_root = Path(sisyphus.__file__).resolve().parent.parent.parent
+    phys_yaml = sis_root / "data" / "physiology" / "reference_man.yaml"
+
+    profile = compute_profile(ISONIAZID_SMILES)
+    adme = predict_adme(profile)
+    base_graph = build_from_yaml(phys_yaml)
+    base_liver_enzymes = {
+        tag: d.mean for tag, d in base_graph.nodes["liver"].enzymes.items()
+    }
+
+    def sim(phenotype_label: str) -> SimResult:
+        override = _phenotype_scale_override_for("NAT2", "isoniazid", phenotype_label)
+        kwargs: dict[str, Any] = {}
+        if override is not None:
+            kwargs["phenotype_scale_overrides"] = override
+        graph = apply_phenotype_to_graph(
+            base_graph, {"NAT2": phenotype_label}, **kwargs
+        )
+        drug = build_drug_on_graph(
+            profile,
+            adme,
+            dose_mg=dose_mg,
+            route="oral",
+            liver_enzymes=base_liver_enzymes,
+        )
+        rng = np.random.default_rng(seed)
+        realized_graph = graph.sample(rng)
+        realized_drug = drug.sample(rng)
+        compiled = ODECompiler().compile(realized_graph)
+        params = ResolvedParams(realized_graph, realized_drug)
+        y0 = np.zeros(compiled.n_states)
+        y0[compiled.state_index[drug.administration_node]] = drug.dose_mg
+        result = solve(compiled, params, y0, t_span=(0, 24))
+        if not result.solver_success:
+            raise RuntimeError(
+                f"ODE solver did not converge for NAT2={phenotype_label}"
             )
         endpoints = compute_endpoints(result, observation_node="venous_blood")
         return SimResult(
